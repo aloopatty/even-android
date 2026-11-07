@@ -134,6 +134,94 @@ class _EvenHomeState extends State<EvenHome> {
     ]),
   );
 
+  Future<void> _showPlacePicker() async {
+    final choice = await showModalBottomSheet<String?>(context: context, showDragHandle: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      builder: (ctx) => SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Where is this expense?', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 14),
+          ListTile(leading: const CircleAvatar(backgroundColor: Color(0xFFEAE7FF), child: Icon(Icons.person_outline, color: Color(0xFF5146C8))),
+            title: const Text('Personal'), subtitle: const Text('Just your personal expenses'),
+            onTap: () => Navigator.pop(ctx, '__personal__')),
+          ..._groups.map((g) => ListTile(leading: const CircleAvatar(backgroundColor: Color(0xFFEAE7FF), child: Icon(Icons.group_outlined, color: Color(0xFF5146C8))),
+            title: Text(g.name), subtitle: Text('${g.members.length} people'),
+            onTap: () => Navigator.pop(ctx, g.id))),
+          ListTile(leading: const CircleAvatar(child: Icon(Icons.add)), title: const Text('Create a new group'),
+            onTap: () { Navigator.pop(ctx, '__new__'); }),
+        ]))));
+    if (!mounted || choice == null) return;
+    if (choice == '__new__') { await _showAddGroup(); if (!mounted) return; await _showPlacePicker(); return; }
+    if (choice == '__personal__') { await _openPersonal(); return; }
+    final group = _groups.firstWhere((g) => g.id == choice);
+    await _openGroup(group);
+  }
+
+  Future<void> _openPersonal() async {
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => _PlacePage(
+      title: 'Personal', subtitle: 'Your own expenses', icon: Icons.person_outline_rounded,
+      expenses: _expenses.where((e) => e.groupId == null).toList(), format: _format,
+      onAdd: () async { await _showAddExpense(); },
+      onExpense: _showExpenseDetails,
+    )));
+    await _refresh();
+  }
+
+  Future<void> _openGroup(EvenGroup group) async {
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => _PlacePage(
+      title: group.name, subtitle: '${group.members.length} people · shared expenses',
+      icon: Icons.group_outlined, expenses: _expenses.where((e) => e.groupId == group.id).toList(),
+      format: _format, onAdd: () async { await _showAddExpense(initialGroupId: group.id); },
+      onExpense: _showExpenseDetails,
+    )));
+    await _refresh();
+  }
+
+  Future<void> _showTotalExpenses() async {
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => _PlacePage(
+      title: 'Total expenses', subtitle: 'Every personal and group transaction',
+      icon: Icons.account_balance_wallet_outlined, expenses: _expenses,
+      format: _format, onAdd: _showPlacePicker, onExpense: _showExpenseDetails,
+    )));
+    await _refresh();
+  }
+
+  Future<void> _showExpenseDetails(EvenExpense expense) async {
+    final shares = await _repo.expenseShares(expense.id);
+    if (!mounted) return;
+    await showModalBottomSheet<void>(context: context, isScrollControlled: true, showDragHandle: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      builder: (ctx) => SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(22, 8, 22, 28),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(expense.title, style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 4), Text(_format(expense.amountMinor), style: const TextStyle(fontSize: 29, fontWeight: FontWeight.w800, color: Color(0xFF5146C8))),
+          const SizedBox(height: 8), Text('Paid by ${expense.paidBy} · ${DateFormat('d MMM yyyy · h:mm a').format(expense.createdAt)}', style: const TextStyle(color: Color(0xFF77748F))),
+          const SizedBox(height: 18), const Text('Who owes what', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+          const SizedBox(height: 8),
+          ...shares.where((row) => row['person_id'] != expense.paidBy).map((row) {
+            final person = row['person_id'] as String; final amount = row['amount_minor'] as int;
+            return ListTile(contentPadding: EdgeInsets.zero, title: Text(person),
+              subtitle: Text('$person owes ${expense.paidBy}'),
+              trailing: Text(_format(amount), style: const TextStyle(fontWeight: FontWeight.w700)),
+              onTap: () => _showSettleDebt(person, expense.paidBy, amount));
+          }),
+          if (shares.length == 1) const Text('No one else owes on this expense.'),
+          const SizedBox(height: 8), SizedBox(width: double.infinity, child: OutlinedButton.icon(
+            onPressed: () { final lines = shares.map((r) => '${r['person_id']}: ${_format(r['amount_minor'] as int)}').join('\n');
+              Clipboard.setData(ClipboardData(text: 'Even expense: ${expense.title}\nPaid by: ${expense.paidBy}\nTotal: ${_format(expense.amountMinor)}\n$lines'));
+              Navigator.pop(ctx); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Expense breakdown copied.')));
+            }, icon: const Icon(Icons.copy_rounded), label: const Text('Copy breakdown')),
+        ]))));
+  }
+
+  Future<void> _showSettleDebt(String from, String to, int amount) async {
+    final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('Record settlement'), content: Text('Record that $from paid $to ${_format(amount)}? This only records a payment made outside the app.'),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Mark settled'))]));
+    if (ok == true) { await _repo.recordSettlement(fromPerson: from, toPerson: to, amountMinor: amount); await _refresh(); }
+  }
+
   String _greeting() { final hour = DateTime.now().hour; return hour < 12 ? 'Good morning.' : hour < 17 ? 'Good afternoon.' : 'Good evening.'; }
   Widget _sectionHeader(String title, {String? action, VoidCallback? onTap}) => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, letterSpacing: -0.4)), if (action != null) TextButton(onPressed: onTap, child: Text(action, style: const TextStyle(color: Color(0xFF6657D9), fontWeight: FontWeight.w600)))]);
   Widget _emptyCard({required IconData icon, required String title, required String subtitle, required String action, required VoidCallback onTap}) => Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22), border: Border.all(color: const Color(0xFFE9E6F5))), child: Column(children: [Icon(icon, size: 28, color: const Color(0xFF6657D9)), const SizedBox(height: 10), Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)), const SizedBox(height: 5), Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF85877F), fontSize: 12, height: 1.4)), const SizedBox(height: 10), TextButton(onPressed: onTap, child: Text(action, style: const TextStyle(color: Color(0xFF6657D9), fontWeight: FontWeight.w700)))]));
@@ -338,14 +426,15 @@ class _EvenHomeState extends State<EvenHome> {
     name.dispose();
   }
 
-  Future<void> _showAddExpense() async {
+  Future<void> _showAddExpense({String? initialGroupId}) async {
     final title = TextEditingController();
     final amount = TextEditingController();
     List<String> selectedPeople = ['You'];
     final splitValues = TextEditingController();
     final splitEntryControllers = <String, TextEditingController>{};
-    final paidBy = TextEditingController(text: 'You');
-    String? groupId;
+    String paidBy = 'You';
+    String? groupId = initialGroupId;
+    if (initialGroupId != null) { final group = _groups.firstWhere((g) => g.id == initialGroupId); selectedPeople = [...group.members]; if (!selectedPeople.contains('You')) selectedPeople.insert(0, 'You'); }
     SplitMethod splitMethod = SplitMethod.equal;
     List<SplitInput>? preparedInputs;
     final result = await showModalBottomSheet<bool>(
@@ -403,23 +492,6 @@ class _EvenHomeState extends State<EvenHome> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String?>(
-                  value: groupId,
-                  decoration: const InputDecoration(labelText: 'Group (optional)'),
-                  items: [
-                    const DropdownMenuItem<String?>(
-                      value: null,
-                      child: Text('Personal expense'),
-                    ),
-                    ..._groups.map(
-                      (group) => DropdownMenuItem<String?>(
-                        value: group.id,
-                        child: Text(group.name),
-                      ),
-                    ),
-                  ],
-                  onChanged: (value) => localSet(() { groupId = value; if (value != null) { final chosen = _groups.firstWhere((g) => g.id == value); selectedPeople = [...chosen.members]; if (!selectedPeople.contains('You')) selectedPeople.insert(0, 'You'); } }),
-                ),
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(14),
@@ -428,7 +500,7 @@ class _EvenHomeState extends State<EvenHome> {
                     Row(children: [const Expanded(child: Text('People in this expense', style: TextStyle(fontWeight: FontWeight.w700))), Text('${selectedPeople.length} selected', style: const TextStyle(color: Color(0xFF777C91), fontSize: 12))]),
                     const SizedBox(height: 10),
                     Wrap(spacing: 7, runSpacing: 7, children: selectedPeople.map((person) => InputChip(
-                      label: Text(person), onDeleted: person == 'You' ? null : () => localSet(() => selectedPeople.remove(person)),
+                      label: Text(person), onDeleted: person == 'You' ? null : () => localSet(() { selectedPeople.remove(person); if (paidBy == person) paidBy = selectedPeople.first; }),
                       backgroundColor: const Color(0xFFEAE9FF), deleteIconColor: const Color(0xFF5148D9),
                     )).toList()),
                     Align(alignment: Alignment.centerLeft, child: TextButton.icon(
@@ -442,13 +514,11 @@ class _EvenHomeState extends State<EvenHome> {
                   ]),
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: paidBy,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: 'Paid by',
-                    hintText: 'You',
-                  ),
+                DropdownButtonFormField<String>(
+                  value: selectedPeople.contains(paidBy) ? paidBy : selectedPeople.first,
+                  decoration: const InputDecoration(labelText: 'Who paid?'),
+                  items: selectedPeople.map((person) => DropdownMenuItem(value: person, child: Text(person))).toList(),
+                  onChanged: (value) => localSet(() => paidBy = value ?? 'You'),
                 ),
                 const SizedBox(height: 12),
                 Material(
@@ -502,7 +572,7 @@ class _EvenHomeState extends State<EvenHome> {
                           amountMinor == null ||
                           amountMinor <= 0 ||
                           participantIds.isEmpty ||
-                          paidBy.text.trim().isEmpty) {
+                          paidBy.trim().isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Enter a description, valid amount, participants and payer.')),
                         );
@@ -571,7 +641,7 @@ class _EvenHomeState extends State<EvenHome> {
     await _repo.addExpense(
       title: title.text.trim(),
       amountMinor: amountMinor,
-      paidBy: paidBy.text.trim(),
+      paidBy: paidBy,
       participants: participants,
       groupId: groupId,
       splitMethod: splitMethod,
@@ -581,6 +651,6 @@ class _EvenHomeState extends State<EvenHome> {
     await _refresh();
   }
 }
-    title.dispose(); amount.dispose(); splitValues.dispose(); paidBy.dispose(); for (final controller in splitEntryControllers.values) { controller.dispose(); }
+    title.dispose(); amount.dispose(); splitValues.dispose(); for (final controller in splitEntryControllers.values) { controller.dispose(); }
   }
 }
