@@ -21,6 +21,12 @@ class EvenRepository {
     return rows.map(EvenExpense.fromMap).toList();
   }
 
+  Future<List<Map<String, Object?>>> expenseShares(String expenseId) async {
+    final db = await _database.database;
+    return db.query('expense_shares', columns: ['person_id', 'amount_minor'],
+      where: 'expense_id = ?', whereArgs: [expenseId], orderBy: 'person_id COLLATE NOCASE');
+  }
+
   Future<void> addGroup(String name, List<String> members) async {
     final clean = members.map((e) => e.trim()).where((e) => e.isNotEmpty).toSet().toList();
     if (!clean.contains('You')) clean.insert(0, 'You');
