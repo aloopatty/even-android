@@ -11,7 +11,7 @@ import 'domain/split_engine.dart';
 
 
 class EvenPalette {
-  static const Color brand = EvenPalette.brand;
+  static const Color brand = Color(0xFF5B4BC4);
   static const Color lightBackground = Color(0xFFF7F6FC);
   static const Color lightSurface = Color(0xFFFCFBFF);
   static const Color lightField = Color(0xFFF0EEFA);
