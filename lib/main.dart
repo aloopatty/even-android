@@ -10,6 +10,18 @@ import 'domain/money.dart';
 import 'domain/split_engine.dart';
 
 
+class EvenPalette {
+  static const Color brand = EvenPalette.brand;
+  static const Color lightBackground = Color(0xFFF7F6FC);
+  static const Color lightSurface = Color(0xFFFCFBFF);
+  static const Color lightField = Color(0xFFF0EEFA);
+  static const Color darkBackground = Color(0xFF12101A);
+  static const Color darkSurface = Color(0xFF1B1926);
+  static const Color darkField = Color(0xFF272333);
+  static const Color darkSnackbar = Color(0xFF342F48);
+  static const Color darkSnackbarAccent = Color(0xFF332B61);
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
@@ -60,17 +72,17 @@ class _EvenAppState extends State<EvenApp> {
   Widget build(BuildContext context) {
     ThemeData makeTheme(Brightness brightness) {
       final dark = brightness == Brightness.dark;
-      const brand = Color(0xFF5B4BC4);
+      const brand = EvenPalette.brand;
       final scheme = ColorScheme.fromSeed(
         seedColor: brand,
         brightness: brightness,
-        surface: dark ? const Color(0xFF191F1B) : const Color(0xFFFAFBF8),
+        surface: dark ? EvenPalette.darkSurface : EvenPalette.lightSurface,
       );
       return ThemeData(
         useMaterial3: true,
         brightness: brightness,
         colorScheme: scheme,
-        scaffoldBackgroundColor: dark ? const Color(0xFF111713) : const Color(0xFFF6F8F4),
+        scaffoldBackgroundColor: dark ? EvenPalette.darkBackground : EvenPalette.lightBackground,
         fontFamily: 'Roboto',
         appBarTheme: AppBarTheme(
           backgroundColor: scheme.surface,
@@ -87,7 +99,7 @@ class _EvenAppState extends State<EvenApp> {
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: dark ? const Color(0xFF252D27) : const Color(0xFFEEF2EC),
+          fillColor: dark ? EvenPalette.darkField : EvenPalette.lightField,
           hintStyle: TextStyle(color: scheme.onSurfaceVariant),
           labelStyle: TextStyle(color: scheme.onSurfaceVariant),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
@@ -110,7 +122,7 @@ class _EvenAppState extends State<EvenApp> {
         ),
         snackBarTheme: SnackBarThemeData(
           behavior: SnackBarBehavior.floating,
-          backgroundColor: dark ? const Color(0xFF303B33) : const Color(0xFF263D31),
+          backgroundColor: dark ? EvenPalette.darkSnackbar : EvenPalette.darkSnackbarAccent,
           contentTextStyle: const TextStyle(color: Colors.white),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
