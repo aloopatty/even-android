@@ -121,6 +121,17 @@ class _EvenHomeState extends State<EvenHome> {
         ]),
       ])))),
       const SizedBox(height: 28),
+      Material(color: Colors.white, borderRadius: BorderRadius.circular(19), child: InkWell(
+        borderRadius: BorderRadius.circular(19), onTap: _openPersonal,
+        child: Padding(padding: const EdgeInsets.all(15), child: Row(children: [
+          Container(width: 43, height: 43, decoration: BoxDecoration(color: const Color(0xFFEAE7FF), borderRadius: BorderRadius.circular(14)),
+            child: const Icon(Icons.person_outline_rounded, color: Color(0xFF5146C8))),
+          const SizedBox(width: 13), const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Personal', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+            SizedBox(height: 3), Text('Your own expenses', style: TextStyle(color: Color(0xFF85877F), fontSize: 11)),
+          ])), const Icon(Icons.chevron_right_rounded, color: Color(0xFF9A9D95)),
+        ]))),
+      const SizedBox(height: 9),
       _sectionHeader('Your groups', action: 'New group', onTap: _showAddGroup),
       const SizedBox(height: 13),
       if (_loading) const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator(strokeWidth: 2)))
@@ -200,10 +211,20 @@ class _EvenHomeState extends State<EvenHome> {
           const SizedBox(height: 8),
           ...shares.where((row) => row['person_id'] != expense.paidBy).map((row) {
             final person = row['person_id'] as String; final amount = row['amount_minor'] as int;
-            return ListTile(contentPadding: EdgeInsets.zero, title: Text(person),
-              subtitle: Text('$person owes ${expense.paidBy}'),
-              trailing: Text(_format(amount), style: const TextStyle(fontWeight: FontWeight.w700)),
-              onTap: () => _showSettleDebt(person, expense.paidBy, amount));
+            return Padding(padding: const EdgeInsets.symmetric(vertical: 5), child: Row(children: [
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(person, style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text('Owes ${expense.paidBy}', style: const TextStyle(color: Color(0xFF77748F), fontSize: 12)),
+              ])),
+              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Text(_format(amount), style: const TextStyle(fontWeight: FontWeight.w700)),
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  TextButton(onPressed: () { Clipboard.setData(ClipboardData(text: 'Hi $person, please settle ${_format(amount)} with ${expense.paidBy} for ${expense.title}.')); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reminder text copied. You can send it in your messaging app.'))); },
+                    child: const Text('Remind')),
+                  TextButton(onPressed: () => _showSettleDebt(person, expense.paidBy, amount), child: const Text('Settle')),
+                ]),
+              ]),
+            ]));
           }),
           if (shares.length == 1) const Text('No one else owes on this expense.'),
           const SizedBox(height: 8), SizedBox(width: double.infinity, child: OutlinedButton.icon(
