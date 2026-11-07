@@ -14,13 +14,14 @@ class EvenGroup {
 }
 
 class EvenExpense {
-  const EvenExpense({required this.id, required this.title, required this.amountMinor, required this.currency, required this.paidBy, required this.groupId, required this.createdAt});
+  const EvenExpense({required this.id, required this.title, required this.amountMinor, required this.currency, required this.paidBy, required this.groupId, required this.splitMethod, required this.createdAt});
   final String id;
   final String title;
   final int amountMinor;
   final String currency;
   final String paidBy;
   final String? groupId;
+  final String splitMethod;
   final DateTime createdAt;
 
   factory EvenExpense.fromMap(Map<String, Object?> map) => EvenExpense(
@@ -30,6 +31,7 @@ class EvenExpense {
     currency: map['currency'] as String? ?? 'INR',
     paidBy: map['paid_by'] as String? ?? 'You',
     groupId: map['group_id'] as String?,
+    splitMethod: map['split_method'] as String? ?? 'equal',
     createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at']! as int),
   );
 }
