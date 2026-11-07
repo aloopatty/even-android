@@ -285,7 +285,34 @@ class _EvenHomeState extends State<EvenHome> {
   String _greeting() { final hour = DateTime.now().hour; return hour < 12 ? 'Good morning.' : hour < 17 ? 'Good afternoon.' : 'Good evening.'; }
   Widget _sectionHeader(String title, {String? action, VoidCallback? onTap}) => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, letterSpacing: -0.4)), if (action != null) TextButton(onPressed: onTap, child: Text(action, style: const TextStyle(color: Color(0xFF6657D9), fontWeight: FontWeight.w600)))]);
   Widget _emptyCard({required IconData icon, required String title, required String subtitle, required String action, required VoidCallback onTap}) => Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22), border: Border.all(color: const Color(0xFFE9E6F5))), child: Column(children: [Icon(icon, size: 28, color: const Color(0xFF6657D9)), const SizedBox(height: 10), Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)), const SizedBox(height: 5), Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF85877F), fontSize: 12, height: 1.4)), const SizedBox(height: 10), TextButton(onPressed: onTap, child: Text(action, style: const TextStyle(color: Color(0xFF6657D9), fontWeight: FontWeight.w700)))]));
-  Widget _groupTile(EvenGroup group) => Material(color: Colors.white, borderRadius: BorderRadius.circular(19), child: InkWell(borderRadius: BorderRadius.circular(19), onTap: () => _openGroup(group), child: Container(margin: const EdgeInsets.only(bottom: 9), padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(19)), child: Row(children: [Container(width: 43, height: 43, decoration: BoxDecoration(color: _groupColor(group.name), borderRadius: BorderRadius.circular(14)), child: Icon(_groupIcon(group.name), color: const Color(0xFF5146C8))), const SizedBox(width: 13), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(group.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)), const SizedBox(height: 3), Text('${group.members.length} members', style: const TextStyle(color: Color(0xFF85877F), fontSize: 11))])), const Icon(Icons.chevron_right_rounded, color: Color(0xFF9A9D95))])));
+  Widget _groupTile(EvenGroup group) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(19),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(19),
+        onTap: () => _openGroup(group),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 9),
+          padding: const EdgeInsets.all(15),
+          child: Row(children: [
+            Container(
+              width: 43, height: 43,
+              decoration: BoxDecoration(color: _groupColor(group.name), borderRadius: BorderRadius.circular(14)),
+              child: Icon(_groupIcon(group.name), color: const Color(0xFF5146C8)),
+            ),
+            const SizedBox(width: 13),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(group.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              const SizedBox(height: 3),
+              Text('${group.members.length} members', style: const TextStyle(color: Color(0xFF85877F), fontSize: 11)),
+            ])),
+            const Icon(Icons.chevron_right_rounded, color: Color(0xFF9A9D95)),
+          ]),
+        ),
+      ),
+    );
+  }
   Color _groupColor(String name) { final n = name.toLowerCase(); if (n.contains('trip') || n.contains('travel')) return const Color(0xFFECE8DB); if (n.contains('home') || n.contains('flat')) return const Color(0xFFEAE7FF); return const Color(0xFFEAE7FF); }
   IconData _groupIcon(String name) { final n = name.toLowerCase(); if (n.contains('trip') || n.contains('travel')) return Icons.flight_rounded; if (n.contains('home') || n.contains('flat')) return Icons.home_rounded; return Icons.group_rounded; }
   Widget _expenseTile(EvenExpense expense) {
