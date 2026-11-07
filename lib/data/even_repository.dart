@@ -51,6 +51,7 @@ class EvenRepository {
     String currency = 'INR',
     SplitMethod splitMethod = SplitMethod.equal,
     List<SplitInput>? splitInputs,
+    DateTime? createdAt,
   }) async {
     final cleanTitle = title.trim();
     final cleanPayer = paidBy.trim();
@@ -77,7 +78,7 @@ class EvenRepository {
     );
     final db = await _database.database;
     await db.transaction((txn) async {
-      await txn.insert('expenses', {'id': id, 'title': cleanTitle, 'amount_minor': amountMinor, 'currency': currency, 'paid_by': cleanPayer, 'group_id': groupId, 'split_method': splitMethod.name, 'created_at': DateTime.now().millisecondsSinceEpoch});
+      await txn.insert('expenses', {'id': id, 'title': cleanTitle, 'amount_minor': amountMinor, 'currency': currency, 'paid_by': cleanPayer, 'group_id': groupId, 'split_method': splitMethod.name, 'created_at': (createdAt ?? DateTime.now()).millisecondsSinceEpoch});
       final batch = txn.batch();
       shares.forEach((person, amount) => batch.insert('expense_shares', {'expense_id': id, 'person_id': person, 'amount_minor': amount}));
       await batch.commit(noResult: true);
