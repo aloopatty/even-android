@@ -355,6 +355,7 @@ class _EvenHomeState extends State<EvenHome> {
       expenses: _expenses.where((e) => e.groupId == null).toList(), format: _format,
       onAdd: () async { await _showAddExpense(); },
       onExpense: _showExpenseDetails,
+      loadExpenses: () async => (await _repo.expenses()).where((e) => e.groupId == null).toList(),
     )));
     await _refresh();
   }
@@ -365,6 +366,7 @@ class _EvenHomeState extends State<EvenHome> {
       icon: Icons.group_outlined, expenses: _expenses.where((e) => e.groupId == group.id).toList(),
       format: _format, onAdd: () async { await _showAddExpense(initialGroupId: group.id); },
       onExpense: _showExpenseDetails,
+      loadExpenses: () async => (await _repo.expenses()).where((e) => e.groupId == group.id).toList(),
     )));
     await _refresh();
   }
@@ -374,6 +376,7 @@ class _EvenHomeState extends State<EvenHome> {
       title: 'Total expenses', subtitle: 'Every personal and group transaction',
       icon: Icons.account_balance_wallet_outlined, expenses: _expenses,
       format: _format, onAdd: _showPlacePicker, onExpense: _showExpenseDetails,
+      loadExpenses: () async => await _repo.expenses(),
     )));
     await _refresh();
   }
@@ -674,7 +677,6 @@ class _EvenHomeState extends State<EvenHome> {
         splitInputs: inputs,
         createdAt: selectedDateTime,
       );
-      if (expense.groupId != null) await _repo.updateGroupMembers(expense.groupId!, people);
       await _refresh();
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Expense updated.')));
     }
@@ -1521,45 +1523,93 @@ class _AccountPageState extends State<_AccountPage> {
   }
 }
 
-class _PlacePage extends StatelessWidget {
+class _PlacePage extends StatefulWidget {
   const _PlacePage({required this.title, required this.subtitle, required this.icon,
-    required this.expenses, required this.format, required this.onAdd, required this.onExpense});
+    required this.expenses, required this.format, required this.onAdd, required this.onExpense,
+    required this.loadExpenses});
   final String title, subtitle;
   final IconData icon;
   final List<EvenExpense> expenses;
   final String Function(int) format;
   final Future<void> Function() onAdd;
   final Future<void> Function(EvenExpense) onExpense;
+  final Future<List<EvenExpense>> Function() loadExpenses;
+
+  @override
+  State<_PlacePage> createState() => _PlacePageState();
+}
+
+class _PlacePageState extends State<_PlacePage> {
+  late List<EvenExpense> _expenses;
+  bool _refreshing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _expenses = [...widget.expenses];
+  }
+
+  Future<void> _reload() async {
+    if (_refreshing) return;
+    setState(() => _refreshing = true);
+    try {
+      final latest = await widget.loadExpenses();
+      if (mounted) setState(() => _expenses = latest);
+    } finally {
+      if (mounted) setState(() => _refreshing = false);
+    }
+  }
+
+  Future<void> _add() async {
+    await widget.onAdd();
+    await _reload();
+  }
+
+  Future<void> _openExpense(EvenExpense expense) async {
+    await widget.onExpense(expense);
+    await _reload();
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(title)),
-    floatingActionButton: FloatingActionButton.extended(onPressed: onAdd,
+    appBar: AppBar(title: Text(widget.title), actions: [
+      if (_refreshing)
+        const Padding(padding: EdgeInsets.only(right: 18), child: Center(
+          child: SizedBox(width: 17, height: 17, child: CircularProgressIndicator(strokeWidth: 2)))),
+      IconButton(tooltip: 'Refresh', onPressed: _reload, icon: const Icon(Icons.refresh_rounded)),
+    ]),
+    floatingActionButton: FloatingActionButton.extended(onPressed: _add,
       backgroundColor: Theme.of(context).colorScheme.primary, foregroundColor: Theme.of(context).colorScheme.onPrimary,
       icon: const Icon(Icons.add_rounded), label: const Text('Add expense')),
-    body: ListView(padding: const EdgeInsets.fromLTRB(20, 8, 20, 100), children: [
-      Row(children: [CircleAvatar(radius: 25, backgroundColor: const Color(0xFFECE9FC),
-        child: Icon(icon, color: const Color(0xFF5B4BC4))), const SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(subtitle, style: const TextStyle(color: Color(0xFF77748F))),
-          Text('${expenses.length} transactions', style: const TextStyle(fontWeight: FontWeight.w700)),
-        ]))]),
-      const SizedBox(height: 22),
-      if (expenses.isEmpty) Container(padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(22)), child: const Column(children: [
-          Icon(Icons.receipt_long_outlined, size: 34), SizedBox(height: 10),
-          Text('No expenses here yet', style: TextStyle(fontWeight: FontWeight.w700)),
-          Text('Add your first expense using the button below.', textAlign: TextAlign.center),
-        ]))
-      else ...expenses.map((e) => Card(child: ListTile(
-        onTap: () => onExpense(e), leading: const CircleAvatar(backgroundColor: Color(0xFFECE9FC),
-          child: Icon(Icons.receipt_long_rounded, color: Color(0xFF5B4BC4))),
-        title: Text(e.title, style: const TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: Text('Paid by ${e.paidBy} · ${DateFormat('d MMM').format(e.createdAt)}'),
-        trailing: Text(format(e.amountMinor), style: const TextStyle(fontWeight: FontWeight.w800)),
-      ))),
-    ]),
+    body: RefreshIndicator(
+      onRefresh: _reload,
+      child: ListView(padding: const EdgeInsets.fromLTRB(20, 8, 20, 100), children: [
+        Row(children: [
+          CircleAvatar(radius: 25, backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+            child: Icon(widget.icon, color: Theme.of(context).colorScheme.onSecondaryContainer)),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(widget.subtitle, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            Text('${_expenses.length} transactions', style: const TextStyle(fontWeight: FontWeight.w700)),
+          ])),
+        ]),
+        const SizedBox(height: 22),
+        if (_expenses.isEmpty) Container(padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(22)), child: const Column(children: [
+            Icon(Icons.receipt_long_outlined, size: 34), SizedBox(height: 10),
+            Text('No expenses here yet', style: TextStyle(fontWeight: FontWeight.w700)),
+            Text('Add your first expense using the button below.', textAlign: TextAlign.center),
+          ]))
+        else ..._expenses.map((e) => Card(child: ListTile(
+          onTap: () => _openExpense(e),
+          leading: CircleAvatar(backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+            child: Icon(Icons.receipt_long_rounded, color: Theme.of(context).colorScheme.onSecondaryContainer)),
+          title: Text(e.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: Text('Paid by ${e.paidBy} · ${DateFormat('d MMM · h:mm a').format(e.createdAt)}'),
+          trailing: Text(widget.format(e.amountMinor), style: const TextStyle(fontWeight: FontWeight.w800)),
+        ))),
+      ]),
+    ),
   );
 }
-
