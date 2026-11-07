@@ -853,9 +853,10 @@ class _EvenHomeState extends State<EvenHome> {
     final maxDaily = daily.fold<int>(0, (maxValue, value) => value > maxValue ? value : maxValue);
     final groupTotals = <String, int>{};
     for (final expense in _expenses) {
+      final matchingGroups = _groups.where((g) => g.id == expense.groupId);
       final groupName = expense.groupId == null
         ? 'Personal'
-        : (_groups.where((g) => g.id == expense.groupId).map((g) => g.name).firstOrNull ?? 'Archived group');
+        : (matchingGroups.isEmpty ? 'Archived group' : matchingGroups.first.name);
       groupTotals[groupName] = (groupTotals[groupName] ?? 0) + expense.amountMinor;
     }
     final rankedGroups = groupTotals.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
@@ -874,7 +875,7 @@ class _EvenHomeState extends State<EvenHome> {
             children: List.generate(7, (index) {
               final value = daily[index];
               final day = today.subtract(Duration(days: 6 - index));
-              final height = maxDaily == 0 ? 4.0 : (value / maxDaily * 68).clamp(4.0, 68.0);
+              final height = maxDaily == 0 ? 4.0 : (value / maxDaily * 68).clamp(4.0, 68.0).toDouble();
               return Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: Column(
                 mainAxisAlignment: MainAxisAlignment.end, children: [
                   if (value > 0) Text(NumberFormat.compact(locale: 'en_IN').format(value / 100),
