@@ -65,7 +65,7 @@ class EvenRepository {
 
   Future<void> addGroupMember(String groupId, String displayName) async {
     final name = displayName.trim();
-    if (name.isEmpty) throw ArgumentError('Enter a person's name.');
+    if (name.isEmpty) throw ArgumentError("Enter a person's name.");
     final db = await _database.database;
     await db.transaction((txn) async {
       final rows = await txn.query('group_members', columns: ['person_id'],
