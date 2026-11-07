@@ -137,7 +137,7 @@ class _EvenHomeState extends State<EvenHome> {
             Text('Personal', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
             SizedBox(height: 3), Text('Your own expenses', style: TextStyle(color: Color(0xFF85877F), fontSize: 11)),
           ])), const Icon(Icons.chevron_right_rounded, color: Color(0xFF9A9D95)),
-        ]))),
+        ])))),
       const SizedBox(height: 9),
       _sectionHeader('Your groups', action: 'New group', onTap: _showAddGroup),
       const SizedBox(height: 13),
