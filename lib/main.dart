@@ -25,7 +25,7 @@ class EvenApp extends StatelessWidget {
   const EvenApp({super.key});
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'EVEN', debugShowCheckedModeBanner: false,
+    title: 'Even', debugShowCheckedModeBanner: false,
     theme: ThemeData(
       useMaterial3: true, brightness: Brightness.light,
       scaffoldBackgroundColor: const Color(0xFFF7F7F4),
@@ -100,7 +100,7 @@ class _EvenHomeState extends State<EvenHome> {
     child: ListView(padding: const EdgeInsets.fromLTRB(22, 18, 22, 110), children: [
       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('EVEN', style: TextStyle(fontSize: 14, letterSpacing: 3.5, fontWeight: FontWeight.w800, color: Color(0xFF253D35))),
+          const Text('Even', style: TextStyle(fontSize: 22, letterSpacing: -0.6, fontWeight: FontWeight.w800, color: Color(0xFF29265F))),
           const SizedBox(height: 5), Text(_greeting(), style: const TextStyle(fontSize: 27, fontWeight: FontWeight.w700, letterSpacing: -0.8)),
         ]),
         Container(width: 44, height: 44, decoration: const BoxDecoration(color: Color(0xFFE8EAE3), shape: BoxShape.circle), child: const Icon(Icons.person_outline_rounded, color: Color(0xFF253D35))),
@@ -224,20 +224,123 @@ class _EvenHomeState extends State<EvenHome> {
     setState(() {});
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Settlement recorded.')));
   }
-  Widget _settingsPage() => ListView(padding: const EdgeInsets.all(22), children: [const SizedBox(height: 8), const Text('Settings', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.8)), const SizedBox(height: 6), const Text('Make EVEN feel like yours.', style: TextStyle(color: Color(0xFF85877F))), const SizedBox(height: 24), _settingTile(Icons.currency_rupee_rounded, 'Currency', 'Indian Rupee (INR)'), _settingTile(Icons.palette_outlined, 'Appearance', 'System default'), _settingTile(Icons.lock_outline_rounded, 'Privacy & security', 'Coming in a future update'), _settingTile(Icons.cloud_outlined, 'Cloud sync', 'Not connected yet'), _settingTile(Icons.info_outline_rounded, 'About EVEN', 'Version 1.0.0 · Built for clarity')]);
-  Widget _settingTile(IconData icon, String title, String subtitle) => Container(margin: const EdgeInsets.only(bottom: 9), padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(17)), child: Row(children: [Icon(icon, color: const Color(0xFF53675D)), const SizedBox(width: 13), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(fontWeight: FontWeight.w600)), const SizedBox(height: 3), Text(subtitle, style: const TextStyle(color: Color(0xFF85877F), fontSize: 11))])), const Icon(Icons.chevron_right_rounded, color: Color(0xFF9A9D95))]));
+  Widget _settingsPage() => ListView(padding: const EdgeInsets.all(22), children: [
+    const SizedBox(height: 8),
+    const Text('Settings', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.8)),
+    const SizedBox(height: 6),
+    const Text('Make Even feel like yours.', style: TextStyle(color: Color(0xFF85877F))),
+    const SizedBox(height: 24),
+    _settingTile(Icons.currency_rupee_rounded, 'Currency', 'Indian Rupee (INR)', () => _showSettingInfo('Currency', 'Even currently records all expenses in Indian Rupees (₹). Currency conversion is not enabled, so changing this would risk misrepresenting existing balances.')),
+    _settingTile(Icons.palette_outlined, 'Appearance', 'System default', () => _showSettingInfo('Appearance', 'Even follows your Android system appearance in this version.')),
+    _settingTile(Icons.lock_outline_rounded, 'Privacy & security', 'Local data on this device', () => _showSettingInfo('Privacy & security', 'Your expenses are stored locally on this device. Cloud accounts and biometric app lock are not configured in this build.')),
+    _settingTile(Icons.cloud_outlined, 'Cloud sync', 'Not connected', () => _showSettingInfo('Cloud sync', 'Cloud sync needs a configured backend, account sign-in and security rules. It is not active, and your data is not being uploaded.')),
+    _settingTile(Icons.info_outline_rounded, 'About Even', 'Version 1.0.0 · Built for clarity', () => showAboutDialog(context: context, applicationName: 'Even', applicationVersion: '1.0.0', applicationLegalese: 'Split expenses. Settle simply.')),
+  ]);
+  Widget _settingTile(IconData icon, String title, String subtitle, VoidCallback onTap) => Material(
+    color: Colors.white, borderRadius: BorderRadius.circular(18),
+    child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(18), child: Container(
+      margin: const EdgeInsets.only(bottom: 9), padding: const EdgeInsets.all(16),
+      child: Row(children: [
+        Icon(icon, color: const Color(0xFF5148D9)), const SizedBox(width: 13),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 3), Text(subtitle, style: const TextStyle(color: Color(0xFF85877F), fontSize: 11)),
+        ])),
+        const Icon(Icons.chevron_right_rounded, color: Color(0xFF9A9D95)),
+      ]),
+    )),
+  );
+  Future<void> _showSettingInfo(String title, String message) async {
+    await showModalBottomSheet<void>(context: context, showDragHandle: true, backgroundColor: const Color(0xFFF7F7F4), builder: (ctx) => Padding(
+      padding: const EdgeInsets.fromLTRB(22, 8, 22, 28), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 10), Text(message, style: const TextStyle(height: 1.5, color: Color(0xFF666879))),
+        const SizedBox(height: 18), SizedBox(width: double.infinity, child: FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Got it'))),
+      ]),
+    ));
+  }
+
+
+  Future<List<String>?> _pickPeople(List<String> initial, {List<String> suggestions = const []}) async {
+    final selected = initial.toSet();
+    final name = TextEditingController();
+    final result = await showModalBottomSheet<List<String>>(
+      context: context, isScrollControlled: true, useSafeArea: true, showDragHandle: true,
+      backgroundColor: const Color(0xFFF7F7FB),
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setSheet) {
+        final candidates = <String>{'You', ...suggestions, ...selected}.toList();
+        return Padding(
+          padding: EdgeInsets.fromLTRB(20, 8, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Choose people', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF191B2E))),
+            const SizedBox(height: 5), const Text('Tap to add or remove someone from this expense.', style: TextStyle(color: Color(0xFF777C91), fontSize: 13)),
+            const SizedBox(height: 14),
+            Wrap(spacing: 8, runSpacing: 8, children: candidates.map((person) => FilterChip(
+              selected: selected.contains(person), label: Text(person == 'You' ? 'You' : person),
+              avatar: CircleAvatar(radius: 12, child: Text(person.isEmpty ? '?' : person[0].toUpperCase(), style: const TextStyle(fontSize: 10))),
+              onSelected: (value) => setSheet(() { if (value) { selected.add(person); } else if (person != 'You') { selected.remove(person); } }),
+            )).toList()),
+            const SizedBox(height: 14),
+            Row(children: [
+              Expanded(child: TextField(controller: name, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(hintText: 'Add a person', prefixIcon: Icon(Icons.person_add_alt_1_rounded)))),
+              const SizedBox(width: 8),
+              IconButton.filled(onPressed: () { final value = name.text.trim(); if (value.isNotEmpty && value.toLowerCase() != 'you') { setSheet(() { selected.add(value); name.clear(); }); } }, icon: const Icon(Icons.add_rounded)),
+            ]),
+            const SizedBox(height: 18),
+            SizedBox(width: double.infinity, child: FilledButton(
+              onPressed: () => Navigator.pop(ctx, ['You', ...selected.where((e) => e != 'You')]),
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF5148D9), padding: const EdgeInsets.all(16)),
+              child: Text('Done · ${selected.length} selected'),
+            )),
+          ]),
+        );
+      }),
+    );
+    name.dispose();
+    return result;
+  }
+
+  Future<SplitMethod?> _chooseSplitMethod(SplitMethod current) => showModalBottomSheet<SplitMethod>(
+    context: context, useSafeArea: true, showDragHandle: true, backgroundColor: const Color(0xFFF7F7FB),
+    builder: (ctx) => Padding(padding: const EdgeInsets.fromLTRB(18, 8, 18, 24), child: Column(mainAxisSize: MainAxisSize.min, children: [
+      const Align(alignment: Alignment.centerLeft, child: Text('Split method', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF191B2E)))),
+      const SizedBox(height: 14),
+      ...[
+        (SplitMethod.equal, Icons.people_alt_outlined, 'Equally', 'Everyone pays the same amount'),
+        (SplitMethod.exact, Icons.currency_rupee_rounded, 'Exact amounts', 'Set each person’s amount'),
+        (SplitMethod.percentage, Icons.percent_rounded, 'By percentage', 'Assign a percentage to each person'),
+        (SplitMethod.shares, Icons.tune_rounded, 'By shares', 'Use weighted shares such as 2:1:1'),
+      ].map((option) {
+        final selected = current == option.$1;
+        return Padding(padding: const EdgeInsets.only(bottom: 9), child: Material(
+          color: selected ? const Color(0xFFEAE9FF) : Colors.white, borderRadius: BorderRadius.circular(18),
+          child: InkWell(borderRadius: BorderRadius.circular(18), onTap: () => Navigator.pop(ctx, option.$1), child: Container(
+            padding: const EdgeInsets.all(15), decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: selected ? const Color(0xFF5148D9) : const Color(0xFFE5E5EF), width: selected ? 1.5 : 1)),
+            child: Row(children: [
+              CircleAvatar(backgroundColor: const Color(0xFFE2E0FF), child: Icon(option.$2, color: const Color(0xFF5148D9))),
+              const SizedBox(width: 13), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(option.$3, style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF191B2E))),
+                const SizedBox(height: 3), Text(option.$4, style: const TextStyle(fontSize: 12, color: Color(0xFF777C91))),
+              ])),
+              Icon(selected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded, color: selected ? const Color(0xFF5148D9) : const Color(0xFF777C91)),
+            ]),
+          )),
+        ));
+      }),
+    ])),
+  );
 
   Future<void> _showAddGroup() async {
-    final name = TextEditingController(); final members = TextEditingController();
-    final result = await showModalBottomSheet<bool>(context: context, isScrollControlled: true, backgroundColor: const Color(0xFFF7F7F4), builder: (ctx) => Padding(padding: EdgeInsets.fromLTRB(22, 20, 22, MediaQuery.of(ctx).viewInsets.bottom + 24), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [Center(child: Container(width: 38, height: 4, decoration: BoxDecoration(color: const Color(0xFFD5D6CF), borderRadius: BorderRadius.circular(4))),), const SizedBox(height: 22), const Text('New group', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700)), const SizedBox(height: 18), TextField(controller: name, autofocus: true, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Group name', hintText: 'e.g. Goa trip')), const SizedBox(height: 12), TextField(controller: members, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'People', hintText: 'Aditi, Rohan (comma separated)')), const SizedBox(height: 8), const Text('You are automatically included.', style: TextStyle(color: Color(0xFF85877F), fontSize: 11)), const SizedBox(height: 18), SizedBox(width: double.infinity, child: FilledButton(onPressed: () { if (name.text.trim().isNotEmpty) Navigator.pop(ctx, true); }, style: FilledButton.styleFrom(backgroundColor: const Color(0xFF253D35), padding: const EdgeInsets.all(16)), child: const Text('Create group')))])));
-    if (result == true) { final people = members.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(); await _repo.addGroup(name.text, people); await _refresh(); }
-    name.dispose(); members.dispose();
+    final name = TextEditingController();
+    final result = await showModalBottomSheet<bool>(context: context, isScrollControlled: true, backgroundColor: const Color(0xFFF7F7F4), builder: (ctx) => Padding(padding: EdgeInsets.fromLTRB(22, 20, 22, MediaQuery.of(ctx).viewInsets.bottom + 24), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [Center(child: Container(width: 38, height: 4, decoration: BoxDecoration(color: const Color(0xFFD5D6CF), borderRadius: BorderRadius.circular(4))),), const SizedBox(height: 22), const Text('New group', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700)), const SizedBox(height: 18), TextField(controller: name, autofocus: true, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Group name', hintText: 'e.g. Goa trip')), const SizedBox(height: 12), const Text('Add members after creating the group from the people picker.', style: TextStyle(color: Color(0xFF777C91), fontSize: 12)), const SizedBox(height: 18), SizedBox(width: double.infinity, child: FilledButton(onPressed: () { if (name.text.trim().isNotEmpty) Navigator.pop(ctx, true); }, style: FilledButton.styleFrom(backgroundColor: const Color(0xFF253D35), padding: const EdgeInsets.all(16)), child: const Text('Create group')))])));
+    if (result == true) { await _repo.addGroup(name.text, const []); await _refresh(); }
+    name.dispose();
   }
 
   Future<void> _showAddExpense() async {
     final title = TextEditingController();
     final amount = TextEditingController();
-    final people = TextEditingController(text: 'You');
+    List<String> selectedPeople = ['You'];
     final splitValues = TextEditingController();
     final paidBy = TextEditingController(text: 'You');
     String? groupId;
@@ -313,16 +416,28 @@ class _EvenHomeState extends State<EvenHome> {
                       ),
                     ),
                   ],
-                  onChanged: (value) => localSet(() => groupId = value),
+                  onChanged: (value) => localSet(() { groupId = value; if (value != null) { final chosen = _groups.firstWhere((g) => g.id == value); selectedPeople = [...chosen.members]; if (!selectedPeople.contains('You')) selectedPeople.insert(0, 'You'); } }),
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: people,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: 'Split between',
-                    hintText: 'You, Aditi, Rohan',
-                  ),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE6E6F0))),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [const Expanded(child: Text('People in this expense', style: TextStyle(fontWeight: FontWeight.w700))), Text('${selectedPeople.length} selected', style: const TextStyle(color: Color(0xFF777C91), fontSize: 12))]),
+                    const SizedBox(height: 10),
+                    Wrap(spacing: 7, runSpacing: 7, children: selectedPeople.map((person) => InputChip(
+                      label: Text(person), onDeleted: person == 'You' ? null : () => localSet(() => selectedPeople.remove(person)),
+                      backgroundColor: const Color(0xFFEAE9FF), deleteIconColor: const Color(0xFF5148D9),
+                    )).toList()),
+                    Align(alignment: Alignment.centerLeft, child: TextButton.icon(
+                      onPressed: () async {
+                        final suggestions = _groups.expand((g) => g.members).toSet().toList();
+                        final chosen = await _pickPeople(selectedPeople, suggestions: suggestions);
+                        if (chosen != null && chosen.isNotEmpty) localSet(() => selectedPeople = chosen);
+                      },
+                      icon: const Icon(Icons.person_add_alt_1_rounded), label: const Text('Add or remove people'),
+                    )),
+                  ]),
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -334,19 +449,19 @@ class _EvenHomeState extends State<EvenHome> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<SplitMethod>(
-                  value: splitMethod,
-                  decoration: const InputDecoration(labelText: 'Split method'),
-                  items: const [
-                    DropdownMenuItem(value: SplitMethod.equal, child: Text('Equally')),
-                    DropdownMenuItem(value: SplitMethod.exact, child: Text('Exact amounts')),
-                    DropdownMenuItem(value: SplitMethod.percentage, child: Text('Percentages')),
-                    DropdownMenuItem(value: SplitMethod.shares, child: Text('Weighted shares')),
-                  ],
-                  onChanged: (value) => localSet(() {
-                    splitMethod = value ?? SplitMethod.equal;
-                    splitValues.clear();
-                  }),
+                Material(
+                  color: Colors.white, borderRadius: BorderRadius.circular(18),
+                  child: InkWell(borderRadius: BorderRadius.circular(18), onTap: () async {
+                    final chosen = await _chooseSplitMethod(splitMethod);
+                    if (chosen != null) localSet(() { splitMethod = chosen; splitValues.clear(); });
+                  }, child: Padding(padding: const EdgeInsets.all(15), child: Row(children: [
+                    const Icon(Icons.tune_rounded, color: Color(0xFF5148D9)), const SizedBox(width: 12),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Text('Split method', style: TextStyle(fontWeight: FontWeight.w700)),
+                      Text(switch (splitMethod) { SplitMethod.equal => 'Equally', SplitMethod.exact => 'Exact amounts', SplitMethod.percentage => 'By percentage', SplitMethod.shares => 'By shares' }, style: const TextStyle(fontSize: 12, color: Color(0xFF777C91))),
+                    ])),
+                    const Icon(Icons.chevron_right_rounded),
+                  ]))),
                 ),
                 if (splitMethod != SplitMethod.equal) ...[
                   const SizedBox(height: 12),
@@ -374,12 +489,7 @@ class _EvenHomeState extends State<EvenHome> {
                   child: FilledButton(
                     onPressed: () {
                       final amountMinor = parseRupeesToPaise(amount.text);
-                      final participantIds = people.text
-                          .split(',')
-                          .map((value) => value.trim())
-                          .where((value) => value.isNotEmpty)
-                          .toSet()
-                          .toList();
+                      final participantIds = [...selectedPeople];
                       if (!participantIds.contains('You')) {
                         participantIds.insert(0, 'You');
                       }
@@ -453,12 +563,7 @@ class _EvenHomeState extends State<EvenHome> {
   final amountMinor = parseRupeesToPaise(amount.text);
 
   if (amountMinor != null && amountMinor > 0) {
-    final participants = people.text
-        .split(',')
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toSet()
-        .toList();
+    final participants = [...selectedPeople];
 
     if (!participants.contains('You')) {
       participants.insert(0, 'You');
@@ -477,6 +582,6 @@ class _EvenHomeState extends State<EvenHome> {
     await _refresh();
   }
 }
-    title.dispose(); amount.dispose(); people.dispose(); splitValues.dispose(); paidBy.dispose();
+    title.dispose(); amount.dispose(); splitValues.dispose(); paidBy.dispose();
   }
 }
