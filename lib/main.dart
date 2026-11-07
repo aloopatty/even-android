@@ -8,7 +8,7 @@ import 'domain/models.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  await SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
     systemNavigationBarColor: Color(0xFFF7F7F4),
@@ -152,7 +152,121 @@ class _EvenHomeState extends State<EvenHome> {
   Future<void> _showAddExpense() async {
     final title = TextEditingController(); final amount = TextEditingController(); final people = TextEditingController(text: 'You');
     String? groupId; String paidBy = 'You';
-    final result = await showModalBottomSheet<bool>(context: context, isScrollControlled: true, backgroundColor: const Color(0xFFF7F7F4), builder: (ctx) => StatefulBuilder(builder: (ctx, localSet) => Padding(padding: EdgeInsets.fromLTRB(22, 20, 22, MediaQuery.of(ctx).viewInsets.bottom + 24), child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [Center(child: Container(width: 38, height: 4, decoration: BoxDecoration(color: const Color(0xFFD5D6CF), borderRadius: BorderRadius.circular(4)))), const SizedBox(height: 22), const Text('Add expense', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700)), const SizedBox(height: 18), TextField(controller: title, autofocus: true, textCapitalization: TextCapitalization.sentences, decoration: const InputDecoration(labelText: 'What was it for?', hintText: 'Dinner, groceries, taxi…')), const SizedBox(height: 12), TextField(controller: amount, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}'))], decoration: const InputDecoration(labelText: 'Total amount', prefixText: '₹  ')), const SizedBox(height: 12), DropdownButtonFormField<String?>(value: groupId, decoration: const InputDecoration(labelText: 'Group (optional)'), items: [const DropdownMenuItem<String?>(value: null, child: Text('Personal expense')), ..._groups.map((g) => DropdownMenuItem<String?>(value: g.id, child: Text(g.name)))], onChanged: (v) => localSet(() => groupId = v)), const SizedBox(height: 12), TextField(controller: people, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Split between', hintText: 'You, Aditi, Rohan')), const SizedBox(height: 12), DropdownButtonFormField<String>(value: paidBy, decoration: const InputDecoration(labelText: 'Paid by'), items: const [DropdownMenuItem(value: 'You', child: Text('You'))], onChanged: (v) => localSet(() => paidBy = v ?? 'You')), const SizedBox(height: 18), SizedBox(width: double.infinity, child: FilledButton(onPressed: () { if (title.text.trim().isNotEmpty && (double.tryParse(amount.text) ?? 0) > 0 && people.text.trim().isNotEmpty) Navigator.pop(ctx, true); }, style: FilledButton.styleFrom(backgroundColor: const Color(0xFF253D35), padding: const EdgeInsets.all(16)), child: const Text('Save expense')))]))));
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFFF7F7F4),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, localSet) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            22,
+            20,
+            22,
+            MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 38,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD5D6CF),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 22),
+                const Text(
+                  'Add expense',
+                  style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 18),
+                TextField(
+                  controller: title,
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: const InputDecoration(
+                    labelText: 'What was it for?',
+                    hintText: 'Dinner, groceries, taxi…',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: amount,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                  ],
+                  decoration: const InputDecoration(
+                    labelText: 'Total amount',
+                    prefixText: '₹  ',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String?>(
+                  value: groupId,
+                  decoration: const InputDecoration(labelText: 'Group (optional)'),
+                  items: [
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('Personal expense'),
+                    ),
+                    ..._groups.map(
+                      (group) => DropdownMenuItem<String?>(
+                        value: group.id,
+                        child: Text(group.name),
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) => localSet(() => groupId = value),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: people,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    labelText: 'Split between',
+                    hintText: 'You, Aditi, Rohan',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: paidBy,
+                  decoration: const InputDecoration(labelText: 'Paid by'),
+                  items: const [
+                    DropdownMenuItem(value: 'You', child: Text('You')),
+                  ],
+                  onChanged: (value) => localSet(() => paidBy = value ?? 'You'),
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      final validAmount = double.tryParse(amount.text) ?? 0;
+                      if (title.text.trim().isNotEmpty &&
+                          validAmount > 0 &&
+                          people.text.trim().isNotEmpty) {
+                        Navigator.pop(ctx, true);
+                      }
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF253D35),
+                      padding: const EdgeInsets.all(16),
+                    ),
+                    child: const Text('Save expense'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
     if (result == true) {
       final parsed = double.parse(amount.text);
       final participants = people.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toSet().toList();
