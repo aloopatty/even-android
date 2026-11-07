@@ -475,7 +475,7 @@ class _EvenHomeState extends State<EvenHome> {
                       SizedBox(width: 132, child: TextField(
                         controller: controller,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\\d*\\.?\\d{0,2}'))],
+                        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}'))],
                         decoration: InputDecoration(
                           isDense: true,
                           prefixText: splitMethod == SplitMethod.exact ? '₹ ' : null,
