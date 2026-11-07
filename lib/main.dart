@@ -5,6 +5,40 @@ import 'data/even_database.dart';
 import 'data/even_repository.dart';
 import 'domain/models.dart';
 
+
+/// Converts rupees into integer paise without using double.
+///
+/// Examples:
+/// ₹100       -> 10000
+/// ₹100.50    -> 10050
+/// ₹0.75      -> 75
+/// ₹1500.05   -> 150005
+int? parseRupeesToPaise(String input) {
+  final value = input.trim();
+
+  if (!RegExp(r'^(?:\d+(?:\.\d{0,2})?|\.\d{1,2})$')
+      .hasMatch(value)) {
+    return null;
+  }
+
+  try {
+    final parts = value.split('.');
+
+    final rupees = parts[0].isEmpty
+        ? 0
+        : int.parse(parts[0]);
+
+    final paise = parts.length == 1
+        ? 0
+        : int.parse((parts[1] + '00').substring(0, 2));
+
+    return rupees * 100 + paise;
+  } on FormatException {
+    return null;
+  }
+}
+
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
@@ -247,12 +281,13 @@ class _EvenHomeState extends State<EvenHome> {
                   width: double.infinity,
                   child: FilledButton(
                     onPressed: () {
-                      final validAmount = double.tryParse(amount.text) ?? 0;
-                      if (title.text.trim().isNotEmpty &&
-                          validAmount > 0 &&
-                          people.text.trim().isNotEmpty) {
-                        Navigator.pop(ctx, true);
-                      }
+                      final validAmount = parseRupeesToPaise(amount.text) ?? 0;
+
+if (title.text.trim().isNotEmpty &&
+    validAmount > 0 &&
+    people.text.trim().isNotEmpty) {
+  Navigator.pop(ctx, true);
+}
                     },
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF253D35),
@@ -267,13 +302,32 @@ class _EvenHomeState extends State<EvenHome> {
         ),
       ),
     );
-    if (result == true) {
-      final parsed = double.parse(amount.text);
-      final participants = people.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toSet().toList();
-      if (!participants.contains('You')) participants.insert(0, 'You');
-      await _repo.addExpense(title: title.text, amountMinor: (parsed * 100).round(), paidBy: paidBy, participants: participants, groupId: groupId);
-      await _refresh();
+   if (result == true) {
+  final amountMinor = parseRupeesToPaise(amount.text);
+
+  if (amountMinor != null && amountMinor > 0) {
+    final participants = people.text
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toSet()
+        .toList();
+
+    if (!participants.contains('You')) {
+      participants.insert(0, 'You');
     }
+
+    await _repo.addExpense(
+      title: title.text.trim(),
+      amountMinor: amountMinor,
+      paidBy: paidBy,
+      participants: participants,
+      groupId: groupId,
+    );
+
+    await _refresh();
+  }
+}
     title.dispose(); amount.dispose(); people.dispose();
   }
 }
