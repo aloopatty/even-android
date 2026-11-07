@@ -12,12 +12,6 @@ import 'domain/split_engine.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-    systemNavigationBarColor: Color(0xFFFAF9FF),
-    systemNavigationBarIconBrightness: Brightness.dark,
-  ));
   runApp(const EvenApp());
 }
 
@@ -39,7 +33,20 @@ class EvenApp extends StatelessWidget {
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16)));
     }
     return MaterialApp(title: 'Even', debugShowCheckedModeBanner: false, themeMode: ThemeMode.system,
-      theme: makeTheme(Brightness.light), darkTheme: makeTheme(Brightness.dark), home: const EvenHome());
+      theme: makeTheme(Brightness.light), darkTheme: makeTheme(Brightness.dark),
+      builder: (context, child) {
+        final dark = Theme.of(context).brightness == Brightness.dark;
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+            systemNavigationBarColor: dark ? const Color(0xFF11101A) : const Color(0xFFFAF9FF),
+            systemNavigationBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
+      home: const EvenHome());
   }
 }
 
