@@ -17,7 +17,7 @@ class EvenRepository {
 
   Future<List<EvenExpense>> expenses() async {
     final db = await _database.database;
-    final rows = await db.query('expenses', where: 'deleted_at IS NULL', orderBy: 'created_at DESC', limit: 50);
+    final rows = await db.query('expenses', where: 'deleted_at IS NULL', orderBy: 'created_at DESC');
     return rows.map(EvenExpense.fromMap).toList();
   }
 
