@@ -653,4 +653,47 @@ class _EvenHomeState extends State<EvenHome> {
 }
     title.dispose(); amount.dispose(); splitValues.dispose(); for (final controller in splitEntryControllers.values) { controller.dispose(); }
   }
+
+class _PlacePage extends StatelessWidget {
+  const _PlacePage({required this.title, required this.subtitle, required this.icon,
+    required this.expenses, required this.format, required this.onAdd, required this.onExpense});
+  final String title, subtitle;
+  final IconData icon;
+  final List<EvenExpense> expenses;
+  final String Function(int) format;
+  final Future<void> Function() onAdd;
+  final Future<void> Function(EvenExpense) onExpense;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: Text(title)),
+    floatingActionButton: FloatingActionButton.extended(onPressed: onAdd,
+      backgroundColor: const Color(0xFF5146C8), foregroundColor: Colors.white,
+      icon: const Icon(Icons.add_rounded), label: const Text('Add expense')),
+    body: ListView(padding: const EdgeInsets.fromLTRB(20, 8, 20, 100), children: [
+      Row(children: [CircleAvatar(radius: 25, backgroundColor: const Color(0xFFEAE7FF),
+        child: Icon(icon, color: const Color(0xFF5146C8))), const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(subtitle, style: const TextStyle(color: Color(0xFF77748F))),
+          Text('${expenses.length} transactions', style: const TextStyle(fontWeight: FontWeight.w700)),
+        ]))]),
+      const SizedBox(height: 22),
+      if (expenses.isEmpty) Container(padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(22)), child: const Column(children: [
+          Icon(Icons.receipt_long_outlined, size: 34), SizedBox(height: 10),
+          Text('No expenses here yet', style: TextStyle(fontWeight: FontWeight.w700)),
+          Text('Add your first expense using the button below.', textAlign: TextAlign.center),
+        ]))
+      else ...expenses.map((e) => Card(child: ListTile(
+        onTap: () => onExpense(e), leading: const CircleAvatar(backgroundColor: Color(0xFFEAE7FF),
+          child: Icon(Icons.receipt_long_rounded, color: Color(0xFF5146C8))),
+        title: Text(e.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: Text('Paid by ${e.paidBy} · ${DateFormat('d MMM').format(e.createdAt)}'),
+        trailing: Text(format(e.amountMinor), style: const TextStyle(fontWeight: FontWeight.w800)),
+      ))),
+    ]),
+  );
+}
+
 }
