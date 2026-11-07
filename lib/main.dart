@@ -14,8 +14,8 @@ void main() async {
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.dark,
-    systemNavigationBarColor: Color(0xFFF7F7F4),
+    statusBarIconBrightness: Brightness.light,
+    systemNavigationBarColor: Color(0xFFFAF9FF),
     systemNavigationBarIconBrightness: Brightness.dark,
   ));
   runApp(const EvenApp());
@@ -24,22 +24,23 @@ void main() async {
 class EvenApp extends StatelessWidget {
   const EvenApp({super.key});
   @override
-  Widget build(BuildContext context) => MaterialApp(
-    title: 'Even', debugShowCheckedModeBanner: false,
-    theme: ThemeData(
-      useMaterial3: true, brightness: Brightness.light,
-      scaffoldBackgroundColor: const Color(0xFFF7F7F4),
-      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF253D35), brightness: Brightness.light, surface: const Color(0xFFF7F7F4)),
-      fontFamily: 'Roboto',
-      appBarTheme: const AppBarTheme(backgroundColor: Color(0xFFF7F7F4), surfaceTintColor: Colors.transparent, elevation: 0),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true, fillColor: const Color(0xFFF0F0EB),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      ),
-    ),
-    home: const EvenHome(),
-  );
+  Widget build(BuildContext context) {
+    ThemeData makeTheme(Brightness brightness) {
+      final dark = brightness == Brightness.dark;
+      final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF6657D9), brightness: brightness,
+        surface: dark ? const Color(0xFF171622) : const Color(0xFFFAF9FF));
+      return ThemeData(useMaterial3: true, brightness: brightness, colorScheme: scheme,
+        scaffoldBackgroundColor: dark ? const Color(0xFF11101A) : const Color(0xFFFAF9FF),
+        fontFamily: 'Roboto',
+        appBarTheme: AppBarTheme(backgroundColor: scheme.surface, surfaceTintColor: Colors.transparent, elevation: 0),
+        inputDecorationTheme: InputDecorationTheme(filled: true,
+          fillColor: dark ? const Color(0xFF262436) : const Color(0xFFF0EEFF),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16)));
+    }
+    return MaterialApp(title: 'Even', debugShowCheckedModeBanner: false, themeMode: ThemeMode.system,
+      theme: makeTheme(Brightness.light), darkTheme: makeTheme(Brightness.dark), home: const EvenHome());
+  }
 }
 
 class EvenHome extends StatefulWidget {
@@ -79,11 +80,11 @@ class _EvenHomeState extends State<EvenHome> {
     return Scaffold(
       body: SafeArea(child: AnimatedSwitcher(duration: const Duration(milliseconds: 220), child: KeyedSubtree(key: ValueKey(_tab), child: pages[_tab]))),
       floatingActionButton: _tab == 0 ? FloatingActionButton.extended(
-        onPressed: _showAddExpense, backgroundColor: const Color(0xFF253D35), foregroundColor: Colors.white,
+        onPressed: _showPlacePicker, backgroundColor: const Color(0xFF5146C8), foregroundColor: Colors.white,
         icon: const Icon(Icons.add_rounded), label: const Text('Add expense', style: TextStyle(fontWeight: FontWeight.w600)),
       ) : null,
       bottomNavigationBar: NavigationBar(
-        height: 72, selectedIndex: _tab, backgroundColor: const Color(0xFFF7F7F4), indicatorColor: const Color(0xFFE2E9E2),
+        height: 72, selectedIndex: _tab, backgroundColor: const Color(0xFFFAF9FF), indicatorColor: const Color(0xFFE8E4FF),
         onDestinationSelected: (value) => setState(() => _tab = value),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.grid_view_rounded), label: 'Home'),
@@ -103,22 +104,22 @@ class _EvenHomeState extends State<EvenHome> {
           const Text('Even', style: TextStyle(fontSize: 22, letterSpacing: -0.6, fontWeight: FontWeight.w800, color: Color(0xFF29265F))),
           const SizedBox(height: 5), Text(_greeting(), style: const TextStyle(fontSize: 27, fontWeight: FontWeight.w700, letterSpacing: -0.8)),
         ]),
-        Container(width: 44, height: 44, decoration: const BoxDecoration(color: Color(0xFFE8EAE3), shape: BoxShape.circle), child: const Icon(Icons.person_outline_rounded, color: Color(0xFF253D35))),
+        Container(width: 44, height: 44, decoration: const BoxDecoration(color: Color(0xFFEAE7FF), shape: BoxShape.circle), child: const Icon(Icons.person_outline_rounded, color: Color(0xFF5146C8))),
       ]),
       const SizedBox(height: 26),
-      Container(padding: const EdgeInsets.all(22), decoration: BoxDecoration(color: const Color(0xFF253D35), borderRadius: BorderRadius.circular(26)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Material(color: const Color(0xFF5146C8), borderRadius: BorderRadius.circular(26), child: InkWell(borderRadius: BorderRadius.circular(26), onTap: _showTotalExpenses, child: Container(padding: const EdgeInsets.all(22), decoration: BoxDecoration(borderRadius: BorderRadius.circular(26)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Text('TOTAL EXPENSES', style: TextStyle(color: Color(0xFFB9C8BE), fontSize: 11, letterSpacing: 1.5, fontWeight: FontWeight.w700)),
         const SizedBox(height: 10),
         Text(_format(_spent), style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w700, letterSpacing: -1.2)),
         const SizedBox(height: 17),
-        const Divider(color: Color(0xFF53675D), height: 1),
+        const Divider(color: Color(0xFF625A9B), height: 1),
         const SizedBox(height: 14),
         Row(children: [
           const Icon(Icons.shield_outlined, color: Color(0xFFB9C8BE), size: 16), const SizedBox(width: 8),
           const Expanded(child: Text('Your shared spending, in one place', style: TextStyle(color: Color(0xFFDAE1DB), fontSize: 12))),
           Text('${_expenses.length} entries', style: const TextStyle(color: Color(0xFFDAE1DB), fontSize: 12, fontWeight: FontWeight.w600)),
         ]),
-      ])),
+      ])))),
       const SizedBox(height: 28),
       _sectionHeader('Your groups', action: 'New group', onTap: _showAddGroup),
       const SizedBox(height: 13),
@@ -134,14 +135,14 @@ class _EvenHomeState extends State<EvenHome> {
   );
 
   String _greeting() { final hour = DateTime.now().hour; return hour < 12 ? 'Good morning.' : hour < 17 ? 'Good afternoon.' : 'Good evening.'; }
-  Widget _sectionHeader(String title, {String? action, VoidCallback? onTap}) => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, letterSpacing: -0.4)), if (action != null) TextButton(onPressed: onTap, child: Text(action, style: const TextStyle(color: Color(0xFF456B58), fontWeight: FontWeight.w600)))]);
-  Widget _emptyCard({required IconData icon, required String title, required String subtitle, required String action, required VoidCallback onTap}) => Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22), border: Border.all(color: const Color(0xFFECECE6))), child: Column(children: [Icon(icon, size: 28, color: const Color(0xFF6F8275)), const SizedBox(height: 10), Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)), const SizedBox(height: 5), Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF85877F), fontSize: 12, height: 1.4)), const SizedBox(height: 10), TextButton(onPressed: onTap, child: Text(action, style: const TextStyle(color: Color(0xFF456B58), fontWeight: FontWeight.w700)))]));
-  Widget _groupTile(EvenGroup group) => Container(margin: const EdgeInsets.only(bottom: 9), padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(19)), child: Row(children: [Container(width: 43, height: 43, decoration: BoxDecoration(color: _groupColor(group.name), borderRadius: BorderRadius.circular(14)), child: Icon(_groupIcon(group.name), color: const Color(0xFF34483C))), const SizedBox(width: 13), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(group.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)), const SizedBox(height: 3), Text('${group.members.length} members', style: const TextStyle(color: Color(0xFF85877F), fontSize: 11))])), const Icon(Icons.chevron_right_rounded, color: Color(0xFF9A9D95))]));
-  Color _groupColor(String name) { final n = name.toLowerCase(); if (n.contains('trip') || n.contains('travel')) return const Color(0xFFECE8DB); if (n.contains('home') || n.contains('flat')) return const Color(0xFFE5EBE4); return const Color(0xFFEAE7EF); }
+  Widget _sectionHeader(String title, {String? action, VoidCallback? onTap}) => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, letterSpacing: -0.4)), if (action != null) TextButton(onPressed: onTap, child: Text(action, style: const TextStyle(color: Color(0xFF6657D9), fontWeight: FontWeight.w600)))]);
+  Widget _emptyCard({required IconData icon, required String title, required String subtitle, required String action, required VoidCallback onTap}) => Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22), border: Border.all(color: const Color(0xFFE9E6F5))), child: Column(children: [Icon(icon, size: 28, color: const Color(0xFF6657D9)), const SizedBox(height: 10), Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)), const SizedBox(height: 5), Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF85877F), fontSize: 12, height: 1.4)), const SizedBox(height: 10), TextButton(onPressed: onTap, child: Text(action, style: const TextStyle(color: Color(0xFF6657D9), fontWeight: FontWeight.w700)))]));
+  Widget _groupTile(EvenGroup group) => Material(color: Colors.white, borderRadius: BorderRadius.circular(19), child: InkWell(borderRadius: BorderRadius.circular(19), onTap: () => _openGroup(group), child: Container(margin: const EdgeInsets.only(bottom: 9), padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(19)), child: Row(children: [Container(width: 43, height: 43, decoration: BoxDecoration(color: _groupColor(group.name), borderRadius: BorderRadius.circular(14)), child: Icon(_groupIcon(group.name), color: const Color(0xFF5146C8))), const SizedBox(width: 13), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(group.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)), const SizedBox(height: 3), Text('${group.members.length} members', style: const TextStyle(color: Color(0xFF85877F), fontSize: 11))])), const Icon(Icons.chevron_right_rounded, color: Color(0xFF9A9D95))])));
+  Color _groupColor(String name) { final n = name.toLowerCase(); if (n.contains('trip') || n.contains('travel')) return const Color(0xFFECE8DB); if (n.contains('home') || n.contains('flat')) return const Color(0xFFEAE7FF); return const Color(0xFFEAE7FF); }
   IconData _groupIcon(String name) { final n = name.toLowerCase(); if (n.contains('trip') || n.contains('travel')) return Icons.flight_rounded; if (n.contains('home') || n.contains('flat')) return Icons.home_rounded; return Icons.group_rounded; }
-  Widget _expenseTile(EvenExpense expense) => Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(17)), child: Row(children: [Container(width: 40, height: 40, decoration: BoxDecoration(color: const Color(0xFFF0F0EB), borderRadius: BorderRadius.circular(13)), child: const Icon(Icons.receipt_outlined, color: Color(0xFF53675D), size: 19)), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(expense.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)), const SizedBox(height: 3), Text(DateFormat('d MMM · h:mm a').format(expense.createdAt), style: const TextStyle(color: Color(0xFF8A8C84), fontSize: 10))])), Text(_format(expense.amountMinor), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13))]));
+  Widget _expenseTile(EvenExpense expense) => Material(color: Colors.white, borderRadius: BorderRadius.circular(17), child: InkWell(borderRadius: BorderRadius.circular(17), onTap: () => _showExpenseDetails(expense), child: Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13), child: Row(children: [Container(width: 40, height: 40, decoration: BoxDecoration(color: const Color(0xFFF0EEFF), borderRadius: BorderRadius.circular(13)), child: const Icon(Icons.receipt_outlined, color: Color(0xFF625A9B), size: 19)), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(expense.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)), const SizedBox(height: 3), Text('Paid by ' + expense.paidBy + ' · ' + DateFormat('d MMM · h:mm a').format(expense.createdAt), style: const TextStyle(color: Color(0xFF8A8C84), fontSize: 10))])), Text(_format(expense.amountMinor), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)), const SizedBox(width: 4), const Icon(Icons.chevron_right_rounded, size: 18, color: Color(0xFF9994B8))]))));
 
-  Widget _activityPage() => ListView(padding: const EdgeInsets.all(22), children: [const SizedBox(height: 8), const Text('Activity', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.8)), const SizedBox(height: 6), const Text('Every shared expense, in order.', style: TextStyle(color: Color(0xFF85877F))), const SizedBox(height: 24), if (_expenses.isEmpty) _emptyCard(icon: Icons.receipt_long_outlined, title: 'Your activity starts here', subtitle: 'Expenses you add will appear here.', action: 'Add expense', onTap: _showAddExpense) else ..._expenses.map(_expenseTile)]);
+  Widget _activityPage() => ListView(padding: const EdgeInsets.all(22), children: [const SizedBox(height: 8), const Text('Activity', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.8)), const SizedBox(height: 6), const Text('Tap any transaction to see the full breakdown.', style: TextStyle(color: Color(0xFF85877F))), const SizedBox(height: 24), if (_expenses.isEmpty) _emptyCard(icon: Icons.receipt_long_outlined, title: 'Your activity starts here', subtitle: 'Expenses you add will appear here.', action: 'Add expense', onTap: _showAddExpense) else ..._expenses.map(_expenseTile)]);
   Widget _insightsPage() => FutureBuilder<Map<String, int>>(
     future: _repo.netBalances(),
     builder: (context, snapshot) {
@@ -166,9 +167,9 @@ class _EvenHomeState extends State<EvenHome> {
             margin: const EdgeInsets.only(bottom: 9), padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)),
             child: Row(children: [
-              CircleAvatar(backgroundColor: const Color(0xFFE8EAE3),
+              CircleAvatar(backgroundColor: const Color(0xFFEAE7FF),
                 child: Text(entry.key.isEmpty ? '?' : entry.key[0].toUpperCase(),
-                  style: const TextStyle(color: Color(0xFF253D35), fontWeight: FontWeight.w700))),
+                  style: const TextStyle(color: Color(0xFF5146C8), fontWeight: FontWeight.w700))),
               const SizedBox(width: 12),
               Expanded(child: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.w600))),
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
@@ -197,12 +198,12 @@ class _EvenHomeState extends State<EvenHome> {
         ],
         const SizedBox(height: 14),
         Container(padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(color: const Color(0xFFE8EAE3), borderRadius: BorderRadius.circular(18)),
+          decoration: BoxDecoration(color: const Color(0xFFEAE7FF), borderRadius: BorderRadius.circular(18)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('All-time spending', style: TextStyle(color: Color(0xFF53675D), fontSize: 12)),
+            const Text('All-time spending', style: TextStyle(color: Color(0xFF625A9B), fontSize: 12)),
             const SizedBox(height: 6),
-            Text(_format(_spent), style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w700, color: Color(0xFF253D35))),
-            Text('${_expenses.length} expenses recorded', style: const TextStyle(color: Color(0xFF53675D), fontSize: 12)),
+            Text(_format(_spent), style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w700, color: Color(0xFF5146C8))),
+            Text('${_expenses.length} expenses recorded', style: const TextStyle(color: Color(0xFF625A9B), fontSize: 12)),
           ])),
       ]);
     },
@@ -251,7 +252,7 @@ class _EvenHomeState extends State<EvenHome> {
     )),
   );
   Future<void> _showSettingInfo(String title, String message) async {
-    await showModalBottomSheet<void>(context: context, showDragHandle: true, backgroundColor: const Color(0xFFF7F7F4), builder: (ctx) => Padding(
+    await showModalBottomSheet<void>(context: context, showDragHandle: true, backgroundColor: const Color(0xFFFAF9FF), builder: (ctx) => Padding(
       padding: const EdgeInsets.fromLTRB(22, 8, 22, 28), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(title, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w700)),
         const SizedBox(height: 10), Text(message, style: const TextStyle(height: 1.5, color: Color(0xFF666879))),
@@ -332,7 +333,7 @@ class _EvenHomeState extends State<EvenHome> {
 
   Future<void> _showAddGroup() async {
     final name = TextEditingController();
-    final result = await showModalBottomSheet<bool>(context: context, isScrollControlled: true, backgroundColor: const Color(0xFFF7F7F4), builder: (ctx) => Padding(padding: EdgeInsets.fromLTRB(22, 20, 22, MediaQuery.of(ctx).viewInsets.bottom + 24), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [Center(child: Container(width: 38, height: 4, decoration: BoxDecoration(color: const Color(0xFFD5D6CF), borderRadius: BorderRadius.circular(4))),), const SizedBox(height: 22), const Text('New group', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700)), const SizedBox(height: 18), TextField(controller: name, autofocus: true, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Group name', hintText: 'e.g. Goa trip')), const SizedBox(height: 12), const Text('Add members after creating the group from the people picker.', style: TextStyle(color: Color(0xFF777C91), fontSize: 12)), const SizedBox(height: 18), SizedBox(width: double.infinity, child: FilledButton(onPressed: () { if (name.text.trim().isNotEmpty) Navigator.pop(ctx, true); }, style: FilledButton.styleFrom(backgroundColor: const Color(0xFF253D35), padding: const EdgeInsets.all(16)), child: const Text('Create group')))])));
+    final result = await showModalBottomSheet<bool>(context: context, isScrollControlled: true, backgroundColor: const Color(0xFFFAF9FF), builder: (ctx) => Padding(padding: EdgeInsets.fromLTRB(22, 20, 22, MediaQuery.of(ctx).viewInsets.bottom + 24), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [Center(child: Container(width: 38, height: 4, decoration: BoxDecoration(color: const Color(0xFFD5D6CF), borderRadius: BorderRadius.circular(4))),), const SizedBox(height: 22), const Text('New group', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700)), const SizedBox(height: 18), TextField(controller: name, autofocus: true, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Group name', hintText: 'e.g. Goa trip')), const SizedBox(height: 12), const Text('Add members after creating the group from the people picker.', style: TextStyle(color: Color(0xFF777C91), fontSize: 12)), const SizedBox(height: 18), SizedBox(width: double.infinity, child: FilledButton(onPressed: () { if (name.text.trim().isNotEmpty) Navigator.pop(ctx, true); }, style: FilledButton.styleFrom(backgroundColor: const Color(0xFF5146C8), padding: const EdgeInsets.all(16)), child: const Text('Create group')))])));
     if (result == true) { await _repo.addGroup(name.text, const []); await _refresh(); }
     name.dispose();
   }
@@ -350,7 +351,7 @@ class _EvenHomeState extends State<EvenHome> {
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFFF7F7F4),
+      backgroundColor: const Color(0xFFFAF9FF),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, localSet) => Padding(
           padding: EdgeInsets.fromLTRB(
@@ -422,7 +423,7 @@ class _EvenHomeState extends State<EvenHome> {
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE6E6F0))),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE9E6F5))),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [const Expanded(child: Text('People in this expense', style: TextStyle(fontWeight: FontWeight.w700))), Text('${selectedPeople.length} selected', style: const TextStyle(color: Color(0xFF777C91), fontSize: 12))]),
                     const SizedBox(height: 10),
@@ -542,7 +543,7 @@ class _EvenHomeState extends State<EvenHome> {
                       }
                     },
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF253D35),
+                      backgroundColor: const Color(0xFF5146C8),
                       padding: const EdgeInsets.all(16),
                     ),
                     child: const Text('Save expense'),
