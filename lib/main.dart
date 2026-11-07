@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'data/even_database.dart';
 import 'data/even_repository.dart';
@@ -83,7 +84,8 @@ class _EvenAppState extends State<EvenApp> {
         brightness: brightness,
         colorScheme: scheme,
         scaffoldBackgroundColor: dark ? EvenPalette.darkBackground : EvenPalette.lightBackground,
-        fontFamily: 'Roboto',
+        fontFamily: GoogleFonts.manrope().fontFamily,
+        textTheme: GoogleFonts.manropeTextTheme(ThemeData(brightness: brightness).textTheme),
         appBarTheme: AppBarTheme(
           backgroundColor: scheme.surface,
           foregroundColor: scheme.onSurface,
@@ -776,6 +778,41 @@ class _EvenHomeState extends State<EvenHome> {
   }
 
   Widget _activityPage() => ListView(padding: const EdgeInsets.all(22), children: [const SizedBox(height: 8), const Text('Activity', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.8)), const SizedBox(height: 6), const Text('Tap any transaction to see the full breakdown.', style: TextStyle(color: Color(0xFF85877F))), const SizedBox(height: 24), if (_expenses.isEmpty) _emptyCard(icon: Icons.receipt_long_outlined, title: 'Your activity starts here', subtitle: 'Expenses you add will appear here.', action: 'Add expense', onTap: _showAddExpense) else ..._expenses.map(_expenseTile)]);
+  Widget _insightSummaryCards() {
+    final now = DateTime.now();
+    final month = _expenses.where((e) => e.createdAt.year == now.year && e.createdAt.month == now.month).toList();
+    final prev = DateTime(now.year, now.month - 1);
+    final lastMonth = _expenses.where((e) => e.createdAt.year == prev.year && e.createdAt.month == prev.month).toList();
+    final total = month.fold<int>(0, (sum, e) => sum + e.amountMinor);
+    final lastTotal = lastMonth.fold<int>(0, (sum, e) => sum + e.amountMinor);
+    final average = month.isEmpty ? 0 : total ~/ month.length;
+    final ranked = [..._expenses]..sort((a, b) => b.amountMinor.compareTo(a.amountMinor));
+    final change = lastTotal == 0 ? null : ((total - lastTotal) / lastTotal * 100).round();
+    final colors = Theme.of(context).colorScheme;
+    Widget metric(String title, String value, String detail, IconData icon) => Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.45))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(icon, color: colors.primary, size: 19), const SizedBox(height: 9),
+        Text(value, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+        const SizedBox(height: 3), Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+        Text(detail, style: TextStyle(color: colors.onSurfaceVariant, fontSize: 10)),
+      ]),
+    );
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(DateFormat('MMMM spending').format(now), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+      const SizedBox(height: 10),
+      GridView.count(shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), crossAxisCount: 2,
+        mainAxisSpacing: 9, crossAxisSpacing: 9, childAspectRatio: 1.5, children: [
+          metric('This month', _format(total), change == null ? '${month.length} transactions' : '${change.abs()}% ${change >= 0 ? 'higher' : 'lower'} vs last month', Icons.calendar_month_rounded),
+          metric('Average expense', _format(average), 'Per transaction this month', Icons.functions_rounded),
+          metric('Largest expense', ranked.isEmpty ? '—' : _format(ranked.first.amountMinor), ranked.isEmpty ? 'No transactions yet' : ranked.first.title, Icons.trending_up_rounded),
+          metric('All-time entries', '${_expenses.length}', 'Across all your groups', Icons.receipt_long_rounded),
+        ]),
+    ]);
+  }
+
   Widget _insightsPage() => FutureBuilder<Map<String, int>>(
     future: _repo.netBalances(),
     builder: (context, snapshot) {
@@ -1043,8 +1080,48 @@ class _EvenHomeState extends State<EvenHome> {
 
   Future<void> _showAddGroup() async {
     final name = TextEditingController();
-    final result = await showModalBottomSheet<bool>(context: context, isScrollControlled: true, backgroundColor: Theme.of(context).colorScheme.surface, builder: (ctx) => Padding(padding: EdgeInsets.fromLTRB(22, 20, 22, MediaQuery.of(ctx).viewInsets.bottom + 24), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [Center(child: Container(width: 38, height: 4, decoration: BoxDecoration(color: const Color(0xFFD5D6CF), borderRadius: BorderRadius.circular(4))),), const SizedBox(height: 22), const Text('New group', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700)), const SizedBox(height: 18), TextField(controller: name, autofocus: true, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Group name', hintText: 'e.g. Goa trip')), const SizedBox(height: 12), const Text('Add members after creating the group from the people picker.', style: TextStyle(color: Color(0xFF777C91), fontSize: 12)), const SizedBox(height: 18), SizedBox(width: double.infinity, child: FilledButton(onPressed: () { if (name.text.trim().isNotEmpty) Navigator.pop(ctx, true); }, style: FilledButton.styleFrom(backgroundColor: const Color(0xFF5B4BC4), padding: const EdgeInsets.all(16)), child: const Text('Create group')))])));
-    if (result == true) { await _repo.addGroup(name.text, const []); await _refresh(); }
+    List<String> members = ['You'];
+    final result = await showModalBottomSheet<bool>(
+      context: context, isScrollControlled: true, useSafeArea: true, showDragHandle: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setSheet) => Padding(
+        padding: EdgeInsets.fromLTRB(22, 12, 22, MediaQuery.of(ctx).viewInsets.bottom + 24),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Create a group', style: Theme.of(ctx).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          Text('Set up your group and add everyone who may share expenses.', style: TextStyle(color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
+          const SizedBox(height: 18),
+          TextField(controller: name, autofocus: true, textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(labelText: 'Group name', hintText: 'e.g. Goa trip')),
+          const SizedBox(height: 16),
+          Row(children: [
+            Expanded(child: Text('Group members', style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700))),
+            Text('${members.length} added', style: TextStyle(color: Theme.of(ctx).colorScheme.primary, fontWeight: FontWeight.w700)),
+          ]),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: members.map((person) => InputChip(
+            avatar: CircleAvatar(backgroundColor: Theme.of(ctx).colorScheme.secondaryContainer,
+              child: Text(person.characters.first.toUpperCase())),
+            label: Text(person),
+            onDeleted: person == 'You' || members.length == 1 ? null : () => setSheet(() => members.remove(person)),
+          )).toList()),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () async {
+              final chosen = await _pickPeople(members, suggestions: _groups.expand((g) => g.members).toSet().toList());
+              if (chosen != null && chosen.isNotEmpty) setSheet(() => members = chosen);
+            },
+            icon: const Icon(Icons.person_add_alt_1_rounded), label: const Text('Add or remove members'),
+          ),
+          const SizedBox(height: 18),
+          SizedBox(width: double.infinity, child: FilledButton(
+            onPressed: name.text.trim().isEmpty ? null : () => Navigator.pop(ctx, true),
+            child: const Padding(padding: EdgeInsets.symmetric(vertical: 13), child: Text('Create group')),
+          )),
+        ]),
+      )),
+    );
+    if (result == true) { await _repo.addGroup(name.text, members); await _refresh(); }
     name.dispose();
   }
 
@@ -1056,6 +1133,7 @@ class _EvenHomeState extends State<EvenHome> {
     final splitEntryControllers = <String, TextEditingController>{};
     String paidBy = 'You';
     String? groupId = initialGroupId;
+    DateTime selectedDateTime = DateTime.now();
     if (initialGroupId != null) { final group = _groups.firstWhere((g) => g.id == initialGroupId); selectedPeople = [...group.members]; if (!selectedPeople.contains('You')) selectedPeople.insert(0, 'You'); }
     SplitMethod splitMethod = SplitMethod.equal;
     List<SplitInput>? preparedInputs;
@@ -1087,6 +1165,8 @@ class _EvenHomeState extends State<EvenHome> {
                   ),
                 ),
                 const SizedBox(height: 22),
+         _insightSummaryCards(),
+
                 const Text(
                   'Add expense',
                   style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700),
@@ -1114,6 +1194,40 @@ class _EvenHomeState extends State<EvenHome> {
                   ),
                 ),
                 const SizedBox(height: 12),
+                const SizedBox(height: 12),
+                Builder(builder: (dateContext) {
+                  final colors = Theme.of(dateContext).colorScheme;
+                  return Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(color: colors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.55))),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('Date and time', style: Theme.of(dateContext).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 9),
+                      Row(children: [
+                        Expanded(child: OutlinedButton.icon(
+                          onPressed: () async {
+                            final picked = await showDatePicker(context: dateContext, initialDate: selectedDateTime,
+                              firstDate: DateTime(2000), lastDate: DateTime(2100));
+                            if (picked != null) localSet(() => selectedDateTime = DateTime(picked.year, picked.month, picked.day, selectedDateTime.hour, selectedDateTime.minute));
+                          },
+                          icon: const Icon(Icons.calendar_today_outlined, size: 17),
+                          label: Text(DateFormat('d MMM yyyy').format(selectedDateTime)),
+                        )),
+                        const SizedBox(width: 8),
+                        Expanded(child: OutlinedButton.icon(
+                          onPressed: () async {
+                            final picked = await showTimePicker(context: dateContext, initialTime: TimeOfDay.fromDateTime(selectedDateTime));
+                            if (picked != null) localSet(() => selectedDateTime = DateTime(selectedDateTime.year, selectedDateTime.month, selectedDateTime.day, picked.hour, picked.minute));
+                          },
+                          icon: const Icon(Icons.schedule_rounded, size: 17),
+                          label: Text(DateFormat('h:mm a').format(selectedDateTime)),
+                        )),
+                      ]),
+                    ]),
+                  );
+                }),
                 const SizedBox(height: 12),
                 Builder(builder: (themeContext) {
                   final colors = Theme.of(themeContext).colorScheme;
@@ -1310,6 +1424,7 @@ class _EvenHomeState extends State<EvenHome> {
       groupId: groupId,
       splitMethod: splitMethod,
       splitInputs: preparedInputs,
+      createdAt: selectedDateTime,
     );
 
     await _refresh();
