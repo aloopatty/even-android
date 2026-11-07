@@ -342,6 +342,7 @@ class _EvenHomeState extends State<EvenHome> {
     final amount = TextEditingController();
     List<String> selectedPeople = ['You'];
     final splitValues = TextEditingController();
+    final splitEntryControllers = <String, TextEditingController>{};
     final paidBy = TextEditingController(text: 'You');
     String? groupId;
     SplitMethod splitMethod = SplitMethod.equal;
@@ -453,7 +454,7 @@ class _EvenHomeState extends State<EvenHome> {
                   color: Colors.white, borderRadius: BorderRadius.circular(18),
                   child: InkWell(borderRadius: BorderRadius.circular(18), onTap: () async {
                     final chosen = await _chooseSplitMethod(splitMethod);
-                    if (chosen != null) localSet(() { splitMethod = chosen; splitValues.clear(); });
+                    if (chosen != null) localSet(() { splitMethod = chosen; splitValues.clear(); for (final person in selectedPeople) { splitEntryControllers.putIfAbsent(person, () => TextEditingController()); } });
                   }, child: Padding(padding: const EdgeInsets.all(15), child: Row(children: [
                     const Icon(Icons.tune_rounded, color: Color(0xFF5148D9)), const SizedBox(width: 12),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -465,23 +466,26 @@ class _EvenHomeState extends State<EvenHome> {
                 ),
                 if (splitMethod != SplitMethod.equal) ...[
                   const SizedBox(height: 12),
-                  TextField(
-                    controller: splitValues,
-                    keyboardType: TextInputType.text,
-                    decoration: InputDecoration(
-                      labelText: splitMethod == SplitMethod.exact
-                          ? 'Amounts in ₹ (comma separated)'
-                          : splitMethod == SplitMethod.percentage
-                              ? 'Percentages (comma separated)'
-                              : 'Share weights (comma separated)',
-                      hintText: splitMethod == SplitMethod.exact
-                          ? '100, 50, 25.50'
-                          : splitMethod == SplitMethod.percentage
-                              ? '50, 30, 20'
-                              : '2, 2, 1',
-                      helperText: 'Enter one value for each person, in the same order as the participant list.',
-                    ),
-                  ),
+                  const Text('Set each person’s share', style: TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 8),
+                  ...selectedPeople.map((person) {
+                    final controller = splitEntryControllers.putIfAbsent(person, () => TextEditingController());
+                    return Padding(padding: const EdgeInsets.only(bottom: 8), child: Row(children: [
+                      Expanded(child: Text(person, style: const TextStyle(fontWeight: FontWeight.w600))),
+                      SizedBox(width: 132, child: TextField(
+                        controller: controller,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\\d*\\.?\\d{0,2}'))],
+                        decoration: InputDecoration(
+                          isDense: true,
+                          prefixText: splitMethod == SplitMethod.exact ? '₹ ' : null,
+                          suffixText: splitMethod == SplitMethod.percentage ? '%' : null,
+                          hintText: splitMethod == SplitMethod.shares ? 'Shares' : '0.00',
+                        ),
+                      )),
+                    ]));
+                  }),
+                  const Text('The total must equal the expense amount (or 100% for percentages).', style: TextStyle(color: Color(0xFF777C91), fontSize: 11)),
                 ],
                 const SizedBox(height: 18),
                 SizedBox(
@@ -504,35 +508,26 @@ class _EvenHomeState extends State<EvenHome> {
                         return;
                       }
                       try {
-                        final values = splitValues.text
-                            .split(',')
-                            .map((value) => value.trim())
-                            .toList();
                         if (splitMethod == SplitMethod.equal) {
-                          preparedInputs = participantIds
-                              .map((id) => SplitInput(personId: id))
-                              .toList();
+                          preparedInputs = participantIds.map((id) => SplitInput(personId: id)).toList();
                         } else {
-                          if (values.length != participantIds.length ||
-                              values.any((value) => value.isEmpty)) {
-                            throw ArgumentError('Enter exactly one split value for every participant.');
-                          }
-                          preparedInputs = List.generate(participantIds.length, (index) {
-                            final value = values[index];
+                          preparedInputs = participantIds.map((person) {
+                            final value = splitEntryControllers[person]?.text.trim() ?? '';
+                            if (value.isEmpty) throw ArgumentError('Enter a split value for $person.');
                             if (splitMethod == SplitMethod.exact) {
                               final parsed = parseRupeesToPaise(value);
-                              if (parsed == null) throw ArgumentError('Use valid amounts with up to two decimal places.');
-                              return SplitInput(personId: participantIds[index], amountMinor: parsed);
+                              if (parsed == null) throw ArgumentError('Enter a valid amount for $person.');
+                              return SplitInput(personId: person, amountMinor: parsed);
                             }
                             if (splitMethod == SplitMethod.percentage) {
                               final parsed = parseRupeesToPaise(value);
-                              if (parsed == null || parsed > 10000) throw ArgumentError('Use percentages from 0 to 100, with up to two decimal places.');
-                              return SplitInput(personId: participantIds[index], percentageBasisPoints: parsed);
+                              if (parsed == null || parsed > 10000) throw ArgumentError('Enter a percentage from 0 to 100 for $person.');
+                              return SplitInput(personId: person, percentageBasisPoints: parsed);
                             }
                             final weight = int.tryParse(value);
                             if (weight == null || weight <= 0) throw ArgumentError('Share weights must be positive whole numbers.');
-                            return SplitInput(personId: participantIds[index], weight: weight);
-                          });
+                            return SplitInput(personId: person, weight: weight);
+                          }).toList();
                         }
                         SplitEngine.split(
                           totalMinor: amountMinor,
@@ -582,6 +577,6 @@ class _EvenHomeState extends State<EvenHome> {
     await _refresh();
   }
 }
-    title.dispose(); amount.dispose(); splitValues.dispose(); paidBy.dispose();
+    title.dispose(); amount.dispose(); splitValues.dispose(); paidBy.dispose(); for (final controller in splitEntryControllers.values) { controller.dispose(); }
   }
 }
