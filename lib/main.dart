@@ -487,7 +487,7 @@ class _EvenHomeState extends State<EvenHome> {
                   decoration: const InputDecoration(labelText: 'Description', prefixIcon: Icon(Icons.receipt_long_outlined))),
                 const SizedBox(height: 12),
                 TextField(controller: amount, keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\\d*\\.?\\d{0,2}'))],
+                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}'))],
                   decoration: const InputDecoration(labelText: 'Total amount', prefixText: '₹  ')),
                 const SizedBox(height: 14),
                 Container(
@@ -605,7 +605,7 @@ class _EvenHomeState extends State<EvenHome> {
                       SizedBox(width: 130, child: TextField(
                         controller: splitControllers[person],
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\\d*\\.?\\d{0,2}'))],
+                        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}'))],
                         decoration: const InputDecoration(isDense: true, prefixText: '₹ '),
                       )),
                     ]),
