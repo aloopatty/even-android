@@ -4,48 +4,8 @@ import 'package:intl/intl.dart';
 import 'data/even_database.dart';
 import 'data/even_repository.dart';
 import 'domain/models.dart';
-
-
-int? parseRupeesToPaise(String input) {
-  final value = input.trim();
-
-  if (!RegExp(r'^\d+(\.\d{1,2})?$').hasMatch(value)) {
-    return null;
-  }
-
-  final parts = value.split('.');
-  final rupees = int.parse(parts[0]);
-  final paise = parts.length > 1
-      ? int.parse(parts[1].padRight(2, '0'))
-      : 0;
-
-  return rupees * 100 + paise;
-}
-
-int? parseRupeesToPaise(String input) {
-  final value = input.trim();
-
-  if (!RegExp(r'^(?:\d+(?:\.\d{0,2})?|\.\d{1,2})$')
-      .hasMatch(value)) {
-    return null;
-  }
-
-  try {
-    final parts = value.split('.');
-
-    final rupees = parts[0].isEmpty
-        ? 0
-        : int.parse(parts[0]);
-
-    final paise = parts.length == 1
-        ? 0
-        : int.parse((parts[1] + '00').substring(0, 2));
-
-    return rupees * 100 + paise;
-  } on FormatException {
-    return null;
-  }
-}
+import 'domain/money.dart';
+import 'domain/split_engine.dart';
 
 
 void main() async {
@@ -193,8 +153,14 @@ class _EvenHomeState extends State<EvenHome> {
   }
 
   Future<void> _showAddExpense() async {
-    final title = TextEditingController(); final amount = TextEditingController(); final people = TextEditingController(text: 'You');
-    String? groupId; String paidBy = 'You';
+    final title = TextEditingController();
+    final amount = TextEditingController();
+    final people = TextEditingController(text: 'You');
+    final splitValues = TextEditingController();
+    final paidBy = TextEditingController(text: 'You');
+    String? groupId;
+    SplitMethod splitMethod = SplitMethod.equal;
+    List<SplitInput>? preparedInputs;
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -277,26 +243,116 @@ class _EvenHomeState extends State<EvenHome> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: paidBy,
-                  decoration: const InputDecoration(labelText: 'Paid by'),
-                  items: const [
-                    DropdownMenuItem(value: 'You', child: Text('You')),
-                  ],
-                  onChanged: (value) => localSet(() => paidBy = value ?? 'You'),
+                TextField(
+                  controller: paidBy,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    labelText: 'Paid by',
+                    hintText: 'You',
+                  ),
                 ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<SplitMethod>(
+                  value: splitMethod,
+                  decoration: const InputDecoration(labelText: 'Split method'),
+                  items: const [
+                    DropdownMenuItem(value: SplitMethod.equal, child: Text('Equally')),
+                    DropdownMenuItem(value: SplitMethod.exact, child: Text('Exact amounts')),
+                    DropdownMenuItem(value: SplitMethod.percentage, child: Text('Percentages')),
+                    DropdownMenuItem(value: SplitMethod.shares, child: Text('Weighted shares')),
+                  ],
+                  onChanged: (value) => localSet(() {
+                    splitMethod = value ?? SplitMethod.equal;
+                    splitValues.clear();
+                  }),
+                ),
+                if (splitMethod != SplitMethod.equal) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: splitValues,
+                    keyboardType: TextInputType.text,
+                    decoration: InputDecoration(
+                      labelText: splitMethod == SplitMethod.exact
+                          ? 'Amounts in ₹ (comma separated)'
+                          : splitMethod == SplitMethod.percentage
+                              ? 'Percentages (comma separated)'
+                              : 'Share weights (comma separated)',
+                      hintText: splitMethod == SplitMethod.exact
+                          ? '100, 50, 25.50'
+                          : splitMethod == SplitMethod.percentage
+                              ? '50, 30, 20'
+                              : '2, 2, 1',
+                      helperText: 'Enter one value for each person, in the same order as the participant list.',
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 18),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
                     onPressed: () {
-                      final validAmount = parseRupeesToPaise(amount.text) ?? 0;
-
-if (title.text.trim().isNotEmpty &&
-    validAmount > 0 &&
-    people.text.trim().isNotEmpty) {
-  Navigator.pop(ctx, true);
-}
+                      final amountMinor = parseRupeesToPaise(amount.text);
+                      final participantIds = people.text
+                          .split(',')
+                          .map((value) => value.trim())
+                          .where((value) => value.isNotEmpty)
+                          .toSet()
+                          .toList();
+                      if (!participantIds.contains('You')) {
+                        participantIds.insert(0, 'You');
+                      }
+                      if (title.text.trim().isEmpty ||
+                          amountMinor == null ||
+                          amountMinor <= 0 ||
+                          participantIds.isEmpty ||
+                          paidBy.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Enter a description, valid amount, participants and payer.')),
+                        );
+                        return;
+                      }
+                      try {
+                        final values = splitValues.text
+                            .split(',')
+                            .map((value) => value.trim())
+                            .toList();
+                        if (splitMethod == SplitMethod.equal) {
+                          preparedInputs = participantIds
+                              .map((id) => SplitInput(personId: id))
+                              .toList();
+                        } else {
+                          if (values.length != participantIds.length ||
+                              values.any((value) => value.isEmpty)) {
+                            throw ArgumentError('Enter exactly one split value for every participant.');
+                          }
+                          preparedInputs = List.generate(participantIds.length, (index) {
+                            final value = values[index];
+                            if (splitMethod == SplitMethod.exact) {
+                              final parsed = parseRupeesToPaise(value);
+                              if (parsed == null) throw ArgumentError('Use valid amounts with up to two decimal places.');
+                              return SplitInput(personId: participantIds[index], amountMinor: parsed);
+                            }
+                            if (splitMethod == SplitMethod.percentage) {
+                              final parsed = parseRupeesToPaise(value);
+                              if (parsed == null || parsed > 10000) throw ArgumentError('Use percentages from 0 to 100, with up to two decimal places.');
+                              return SplitInput(personId: participantIds[index], percentageBasisPoints: parsed);
+                            }
+                            final weight = int.tryParse(value);
+                            if (weight == null || weight <= 0) throw ArgumentError('Share weights must be positive whole numbers.');
+                            return SplitInput(personId: participantIds[index], weight: weight);
+                          });
+                        }
+                        SplitEngine.split(
+                          totalMinor: amountMinor,
+                          participants: preparedInputs!,
+                          method: splitMethod,
+                        );
+                        Navigator.pop(ctx, true);
+                      } on ArgumentError catch (error) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(error.message?.toString() ?? 'Check the split values.')),
+                        );
+                      }
                     },
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF253D35),
@@ -329,14 +385,16 @@ if (title.text.trim().isNotEmpty &&
     await _repo.addExpense(
       title: title.text.trim(),
       amountMinor: amountMinor,
-      paidBy: paidBy,
+      paidBy: paidBy.text.trim(),
       participants: participants,
       groupId: groupId,
+      splitMethod: splitMethod,
+      splitInputs: preparedInputs,
     );
 
     await _refresh();
   }
 }
-    title.dispose(); amount.dispose(); people.dispose();
+    title.dispose(); amount.dispose(); people.dispose(); splitValues.dispose(); paidBy.dispose();
   }
 }
