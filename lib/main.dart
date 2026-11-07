@@ -78,6 +78,24 @@ class _EvenAppState extends State<EvenApp> {
         seedColor: brand,
         brightness: brightness,
         surface: dark ? EvenPalette.darkSurface : EvenPalette.lightSurface,
+      ).copyWith(
+        primary: brand,
+        onPrimary: Colors.white,
+        primaryContainer: dark ? const Color(0xFF332B61) : const Color(0xFFECE9FC),
+        onPrimaryContainer: dark ? const Color(0xFFEAE5FF) : const Color(0xFF30236F),
+        secondary: dark ? const Color(0xFFB9AEFF) : brand,
+        secondaryContainer: dark ? const Color(0xFF302B42) : const Color(0xFFECE9FC),
+        onSecondaryContainer: dark ? const Color(0xFFE4DFFF) : const Color(0xFF30236F),
+        surface: dark ? EvenPalette.darkSurface : EvenPalette.lightSurface,
+        onSurface: dark ? const Color(0xFFF2EFFA) : const Color(0xFF191622),
+        surfaceContainerLowest: dark ? const Color(0xFF100E17) : Colors.white,
+        surfaceContainerLow: dark ? const Color(0xFF211E2D) : const Color(0xFFF3F1FA),
+        surfaceContainer: dark ? const Color(0xFF272333) : const Color(0xFFF0EEFA),
+        surfaceContainerHigh: dark ? const Color(0xFF2C2839) : const Color(0xFFECEAF4),
+        surfaceContainerHighest: dark ? const Color(0xFF353044) : const Color(0xFFE7E4F0),
+        onSurfaceVariant: dark ? const Color(0xFFBDB7CC) : const Color(0xFF6F6A7D),
+        outline: dark ? const Color(0xFF777086) : const Color(0xFF8F899E),
+        outlineVariant: dark ? const Color(0xFF494356) : const Color(0xFFE3E0EC),
       );
       return ThemeData(
         useMaterial3: true,
@@ -98,6 +116,54 @@ class _EvenAppState extends State<EvenApp> {
           elevation: 0,
           margin: EdgeInsets.zero,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        ),
+        bottomSheetTheme: BottomSheetThemeData(
+          backgroundColor: scheme.surface,
+          modalBackgroundColor: scheme.surface,
+          surfaceTintColor: Colors.transparent,
+          showDragHandle: true,
+          dragHandleColor: scheme.outlineVariant,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+          ),
+        ),
+        dialogTheme: DialogThemeData(
+          backgroundColor: scheme.surface,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+          titleTextStyle: TextStyle(color: scheme.onSurface, fontWeight: FontWeight.w800, fontSize: 20),
+          contentTextStyle: TextStyle(color: scheme.onSurfaceVariant, height: 1.45),
+        ),
+        dividerColor: scheme.outlineVariant.withValues(alpha: 0.65),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: scheme.primary,
+            side: BorderSide(color: scheme.outlineVariant),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          ),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            backgroundColor: scheme.primary,
+            foregroundColor: scheme.onPrimary,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          ),
+        ),
+        floatingActionButtonTheme: FloatingActionButtonThemeData(
+          backgroundColor: scheme.primary,
+          foregroundColor: scheme.onPrimary,
+          elevation: dark ? 3 : 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        ),
+        chipTheme: ChipThemeData(
+          backgroundColor: scheme.surfaceContainerHigh,
+          selectedColor: scheme.primaryContainer,
+          secondarySelectedColor: scheme.primaryContainer,
+          labelStyle: TextStyle(color: scheme.onSurface, fontWeight: FontWeight.w600),
+          side: BorderSide(color: scheme.outlineVariant),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
@@ -143,7 +209,7 @@ class _EvenAppState extends State<EvenApp> {
           value: SystemUiOverlayStyle(
             statusBarColor: Colors.transparent,
             statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
-            systemNavigationBarColor: dark ? const Color(0xFF111713) : const Color(0xFFF6F8F4),
+            systemNavigationBarColor: dark ? EvenPalette.darkBackground : EvenPalette.lightBackground,
             systemNavigationBarIconBrightness: dark ? Brightness.light : Brightness.dark,
           ),
           child: child ?? const SizedBox.shrink(),
