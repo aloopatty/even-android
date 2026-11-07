@@ -564,6 +564,9 @@ class _EvenHomeState extends State<EvenHome> {
       participants.insert(0, 'You');
     }
 
+    if (groupId != null) {
+      await _repo.updateGroupMembers(groupId!, participants);
+    }
     await _repo.addExpense(
       title: title.text.trim(),
       amountMinor: amountMinor,
