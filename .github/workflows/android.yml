@@ -31,7 +31,12 @@ jobs:
         run: |
           flutter create --platforms=android --org com.even --project-name app /tmp/even-platform
           cp -R /tmp/even-platform/android ./android
-          sed -i 's/android:label="app"/android:label="EVEN"/' android/app/src/main/AndroidManifest.xml
+          sed -i 's/android:label="app"/android:label="Even"/' android/app/src/main/AndroidManifest.xml
+          mkdir -p android/app/src/main/res/drawable android/app/src/main/res/mipmap-anydpi-v26 android/app/src/main/res/values
+          cp tool/android/ic_launcher_foreground.xml android/app/src/main/res/drawable/ic_launcher_foreground.xml
+          cp tool/android/ic_launcher.xml android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          cp tool/android/ic_launcher_background.xml android/app/src/main/res/values/ic_launcher_background.xml
+          sed -i 's/android:icon="@mipmap\/ic_launcher"/android:icon="@mipmap\/ic_launcher"/' android/app/src/main/AndroidManifest.xml
 
       - name: Install dependencies
         run: flutter pub get
