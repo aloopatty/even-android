@@ -682,6 +682,8 @@ class _EvenHomeState extends State<EvenHome> {
     title.dispose(); amount.dispose(); splitValues.dispose(); for (final controller in splitEntryControllers.values) { controller.dispose(); }
   }
 
+}
+
 class _PlacePage extends StatelessWidget {
   const _PlacePage({required this.title, required this.subtitle, required this.icon,
     required this.expenses, required this.format, required this.onAdd, required this.onExpense});
@@ -724,4 +726,3 @@ class _PlacePage extends StatelessWidget {
   );
 }
 
-}
