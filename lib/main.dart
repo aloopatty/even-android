@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'data/even_database.dart';
 import 'data/even_repository.dart';
 import 'domain/models.dart';
+import 'domain/balance_engine.dart';
 import 'domain/money.dart';
 import 'domain/split_engine.dart';
 
@@ -141,7 +142,88 @@ class _EvenHomeState extends State<EvenHome> {
   Widget _expenseTile(EvenExpense expense) => Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(17)), child: Row(children: [Container(width: 40, height: 40, decoration: BoxDecoration(color: const Color(0xFFF0F0EB), borderRadius: BorderRadius.circular(13)), child: const Icon(Icons.receipt_outlined, color: Color(0xFF53675D), size: 19)), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(expense.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)), const SizedBox(height: 3), Text(DateFormat('d MMM · h:mm a').format(expense.createdAt), style: const TextStyle(color: Color(0xFF8A8C84), fontSize: 10))])), Text(_format(expense.amountMinor), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13))]));
 
   Widget _activityPage() => ListView(padding: const EdgeInsets.all(22), children: [const SizedBox(height: 8), const Text('Activity', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.8)), const SizedBox(height: 6), const Text('Every shared expense, in order.', style: TextStyle(color: Color(0xFF85877F))), const SizedBox(height: 24), if (_expenses.isEmpty) _emptyCard(icon: Icons.receipt_long_outlined, title: 'Your activity starts here', subtitle: 'Expenses you add will appear here.', action: 'Add expense', onTap: _showAddExpense) else ..._expenses.map(_expenseTile)]);
-  Widget _insightsPage() => ListView(padding: const EdgeInsets.all(22), children: [const SizedBox(height: 8), const Text('Insights', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.8)), const SizedBox(height: 6), const Text('A clearer picture of shared spending.', style: TextStyle(color: Color(0xFF85877F))), const SizedBox(height: 24), Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('All-time spending', style: TextStyle(color: Color(0xFF85877F), fontSize: 12)), const SizedBox(height: 8), Text(_format(_spent), style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700)), const SizedBox(height: 8), Text('${_expenses.length} expenses recorded', style: const TextStyle(color: Color(0xFF85877F), fontSize: 12))])), const SizedBox(height: 14), _emptyCard(icon: Icons.auto_graph_rounded, title: 'More insight, less guesswork', subtitle: 'Category breakdowns and spending trends are part of the next analytics milestone.', action: 'Back to home', onTap: () => setState(() => _tab = 0))]);
+  Widget _insightsPage() => FutureBuilder<Map<String, int>>(
+    future: _repo.netBalances(),
+    builder: (context, snapshot) {
+      final balances = snapshot.data ?? const <String, int>{};
+      final sorted = balances.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+      final transfers = snapshot.hasData ? BalanceEngine.suggestedTransfers(balances) : <Transfer>[];
+      return ListView(padding: const EdgeInsets.all(22), children: [
+        const SizedBox(height: 8),
+        const Text('Balances', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.8)),
+        const SizedBox(height: 6),
+        const Text('Who owes whom, without the mental arithmetic.', style: TextStyle(color: Color(0xFF85877F))),
+        const SizedBox(height: 22),
+        if (snapshot.connectionState == ConnectionState.waiting)
+          const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator(strokeWidth: 2)))
+        else if (snapshot.hasError)
+          _emptyCard(icon: Icons.error_outline, title: 'Could not calculate balances', subtitle: snapshot.error.toString(), action: 'Retry', onTap: () => setState(() {}))
+        else if (balances.isEmpty)
+          _emptyCard(icon: Icons.check_circle_outline, title: 'All settled up', subtitle: 'There are no outstanding balances in your ledger.', action: 'Back to home', onTap: () => setState(() => _tab = 0))
+        else
+          ...sorted.map((entry) => Container(
+            margin: const EdgeInsets.only(bottom: 9), padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)),
+            child: Row(children: [
+              CircleAvatar(backgroundColor: const Color(0xFFE8EAE3),
+                child: Text(entry.key.isEmpty ? '?' : entry.key[0].toUpperCase(),
+                  style: const TextStyle(color: Color(0xFF253D35), fontWeight: FontWeight.w700))),
+              const SizedBox(width: 12),
+              Expanded(child: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.w600))),
+              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Text(_format(entry.value.abs()), style: TextStyle(fontWeight: FontWeight.w700,
+                  color: entry.value > 0 ? const Color(0xFF2E6B4E) : const Color(0xFF9B4A3C))),
+                Text(entry.value > 0 ? 'gets back' : 'owes',
+                  style: const TextStyle(color: Color(0xFF85877F), fontSize: 11)),
+              ]),
+            ]),
+          )),
+        if (transfers.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          const Text('Suggested settlements', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 10),
+          ...transfers.map((transfer) => Container(
+            margin: const EdgeInsets.only(bottom: 9), padding: const EdgeInsets.all(15),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${transfer.from} pays ${transfer.to}', style: const TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 5),
+              Text(_format(transfer.amountMinor), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+              Align(alignment: Alignment.centerRight, child: TextButton(
+                onPressed: () => _confirmSettlement(transfer), child: const Text('Mark as paid'))),
+            ]),
+          )),
+        ],
+        const SizedBox(height: 14),
+        Container(padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(color: const Color(0xFFE8EAE3), borderRadius: BorderRadius.circular(18)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('All-time spending', style: TextStyle(color: Color(0xFF53675D), fontSize: 12)),
+            const SizedBox(height: 6),
+            Text(_format(_spent), style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w700, color: Color(0xFF253D35))),
+            Text('${_expenses.length} expenses recorded', style: const TextStyle(color: Color(0xFF53675D), fontSize: 12)),
+          ])),
+      ]);
+    },
+  );
+
+  Future<void> _confirmSettlement(Transfer transfer) async {
+    final confirmed = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('Record settlement?'),
+      content: Text('Confirm that ${transfer.from} has paid ${transfer.to} ${_format(transfer.amountMinor)} outside EVEN. This records the payment; it does not move money.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirm paid')),
+      ],
+    ));
+    if (confirmed != true) return;
+    await _repo.recordSettlement(fromPerson: transfer.from, toPerson: transfer.to, amountMinor: transfer.amountMinor);
+    if (!mounted) return;
+    await _refresh();
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Settlement recorded.')));
+  }
   Widget _settingsPage() => ListView(padding: const EdgeInsets.all(22), children: [const SizedBox(height: 8), const Text('Settings', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.8)), const SizedBox(height: 6), const Text('Make EVEN feel like yours.', style: TextStyle(color: Color(0xFF85877F))), const SizedBox(height: 24), _settingTile(Icons.currency_rupee_rounded, 'Currency', 'Indian Rupee (INR)'), _settingTile(Icons.palette_outlined, 'Appearance', 'System default'), _settingTile(Icons.lock_outline_rounded, 'Privacy & security', 'Coming in a future update'), _settingTile(Icons.cloud_outlined, 'Cloud sync', 'Not connected yet'), _settingTile(Icons.info_outline_rounded, 'About EVEN', 'Version 1.0.0 · Built for clarity')]);
   Widget _settingTile(IconData icon, String title, String subtitle) => Container(margin: const EdgeInsets.only(bottom: 9), padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(17)), child: Row(children: [Icon(icon, color: const Color(0xFF53675D)), const SizedBox(width: 13), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(fontWeight: FontWeight.w600)), const SizedBox(height: 3), Text(subtitle, style: const TextStyle(color: Color(0xFF85877F), fontSize: 11))])), const Icon(Icons.chevron_right_rounded, color: Color(0xFF9A9D95))]));
 

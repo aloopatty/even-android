@@ -11,7 +11,7 @@ class EvenDatabase {
     final root = await getDatabasesPath();
     _db = await openDatabase(
       p.join(root, 'even.db'),
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await db.execute('''CREATE TABLE groups (
           id TEXT PRIMARY KEY, name TEXT NOT NULL, members TEXT NOT NULL,
@@ -47,6 +47,9 @@ class EvenDatabase {
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           await db.execute("ALTER TABLE expenses ADD COLUMN split_method TEXT NOT NULL DEFAULT 'equal'");
+        }
+        if (oldVersion < 3) {
+          await db.execute('CREATE INDEX idx_settlements_active ON settlements(deleted_at, created_at DESC)');
         }
       },
     );
