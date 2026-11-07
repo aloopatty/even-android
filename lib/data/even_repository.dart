@@ -28,6 +28,14 @@ class EvenRepository {
     await db.insert('groups', {'id': _uuid.v4(), 'name': name.trim(), 'members': clean.join('|'), 'created_at': DateTime.now().millisecondsSinceEpoch});
   }
 
+  Future<void> updateGroupMembers(String groupId, List<String> members) async {
+    final clean = members.map((person) => person.trim()).where((person) => person.isNotEmpty).toSet().toList();
+    if (!clean.contains('You')) clean.insert(0, 'You');
+    final db = await _database.database;
+    final changed = await db.update('groups', {'members': clean.join('|')}, where: 'id = ? AND archived = 0', whereArgs: [groupId]);
+    if (changed == 0) throw StateError('Group not found.');
+  }
+
   Future<void> addExpense({
     required String title,
     required int amountMinor,
