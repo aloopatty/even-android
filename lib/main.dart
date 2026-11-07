@@ -385,76 +385,104 @@ class _EvenHomeState extends State<EvenHome> {
     final shares = await _repo.expenseShares(expense.id);
     if (!mounted) return;
     await showModalBottomSheet<void>(
-      context: context, isScrollControlled: true, showDragHandle: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(22, 8, 22, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      context: context, isScrollControlled: true, useSafeArea: true,
+      showDragHandle: true, backgroundColor: Theme.of(context).colorScheme.surface,
+      builder: (ctx) {
+        final colors = Theme.of(ctx).colorScheme;
+        final debtors = shares.where((row) => row['person_id'] != expense.paidBy).toList();
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 26),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               Row(children: [
-                Expanded(child: Text(expense.title, style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w800))),
-                IconButton.filledTonal(
-                  tooltip: 'Edit expense',
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('TRANSACTION DETAILS', style: TextStyle(color: colors.onSurfaceVariant, letterSpacing: 1.3, fontSize: 10, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 5),
+                  Text(expense.title, style: Theme.of(ctx).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+                ])),
+                IconButton.filledTonal(tooltip: 'Edit transaction',
                   onPressed: () { Navigator.pop(ctx); _editExpense(expense); },
-                  icon: const Icon(Icons.edit_outlined),
-                ),
+                  icon: const Icon(Icons.edit_outlined)),
               ]),
-              const SizedBox(height: 4),
-              Text(_format(expense.amountMinor), style: const TextStyle(fontSize: 29, fontWeight: FontWeight.w800, color: Color(0xFF5B4BC4))),
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity, padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(color: colors.primary, borderRadius: BorderRadius.circular(22)),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('TOTAL AMOUNT', style: TextStyle(color: colors.onPrimary.withValues(alpha: 0.78), letterSpacing: 1.2, fontSize: 10, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 6),
+                  Text(_format(expense.amountMinor), style: TextStyle(color: colors.onPrimary, fontSize: 31, fontWeight: FontWeight.w800, letterSpacing: -0.7)),
+                  const SizedBox(height: 13),
+                  Row(children: [
+                    Icon(Icons.account_circle_outlined, color: colors.onPrimary.withValues(alpha: 0.8), size: 17),
+                    const SizedBox(width: 7),
+                    Expanded(child: Text('Paid by ${expense.paidBy}', style: TextStyle(color: colors.onPrimary, fontWeight: FontWeight.w600))),
+                    Text(DateFormat('d MMM · h:mm a').format(expense.createdAt),
+                      style: TextStyle(color: colors.onPrimary.withValues(alpha: 0.82), fontSize: 11)),
+                  ]),
+                ]),
+              ),
+              const SizedBox(height: 22),
+              Row(children: [
+                Expanded(child: Text('Who owes what', style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
+                Text('${shares.length} people', style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12)),
+              ]),
               const SizedBox(height: 8),
-              Text('Paid by ${expense.paidBy} · ${DateFormat('d MMM yyyy · h:mm a').format(expense.createdAt)}',
-                style: const TextStyle(color: Color(0xFF77748F))),
-              const SizedBox(height: 18),
-              const Text('Who owes what', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-              const SizedBox(height: 8),
-              ...shares.where((row) => row['person_id'] != expense.paidBy).map((row) {
+              if (debtors.isEmpty)
+                Container(width: double.infinity, padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(color: colors.surfaceContainerLow, borderRadius: BorderRadius.circular(16)),
+                  child: const Text('This transaction is covered by the payer alone.')),
+              ...debtors.map((row) {
                 final person = row['person_id'] as String;
                 final amount = row['amount_minor'] as int;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 5),
-                  child: Row(children: [
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(person, style: const TextStyle(fontWeight: FontWeight.w700)),
-                      Text('Owes ${expense.paidBy}', style: const TextStyle(color: Color(0xFF77748F), fontSize: 12)),
-                    ])),
-                    Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                      Text(_format(amount), style: const TextStyle(fontWeight: FontWeight.w700)),
-                      Row(mainAxisSize: MainAxisSize.min, children: [
-                        TextButton(
-                          onPressed: () {
-                            Clipboard.setData(ClipboardData(text: 'Hi $person, please settle ${_format(amount)} with ${expense.paidBy} for ${expense.title}.'));
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reminder text copied. You can send it in your messaging app.')));
-                          },
-                          child: const Text('Remind'),
-                        ),
-                        TextButton(onPressed: () => _showSettleDebt(person, expense.paidBy, amount), child: const Text('Settle')),
-                      ]),
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 9), padding: const EdgeInsets.all(13),
+                  decoration: BoxDecoration(color: colors.surfaceContainerLow, borderRadius: BorderRadius.circular(17)),
+                  child: Column(children: [
+                    Row(children: [
+                      CircleAvatar(radius: 19, backgroundColor: colors.secondaryContainer,
+                        child: Text(person.characters.first.toUpperCase(), style: TextStyle(color: colors.onSecondaryContainer, fontWeight: FontWeight.w700))),
+                      const SizedBox(width: 10),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(person, style: const TextStyle(fontWeight: FontWeight.w700)),
+                        Text('Owes ${expense.paidBy}', style: TextStyle(color: colors.onSurfaceVariant, fontSize: 11)),
+                      ])),
+                      Text(_format(amount), style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                    ]),
+                    const SizedBox(height: 11),
+                    Row(children: [
+                      Expanded(child: OutlinedButton.icon(
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: 'Hi $person, please settle ${_format(amount)} with ${expense.paidBy} for ${expense.title}.'));
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reminder copied. You can paste it into your chat.')));
+                        },
+                        icon: const Icon(Icons.content_copy_rounded, size: 16),
+                        label: const Text('Copy reminder'),
+                      )),
+                      const SizedBox(width: 9),
+                      Expanded(child: FilledButton.tonalIcon(
+                        onPressed: () => _showSettleDebt(person, expense.paidBy, amount),
+                        icon: const Icon(Icons.check_circle_outline_rounded, size: 17),
+                        label: const Text('Record paid'),
+                      )),
                     ]),
                   ]),
                 );
               }),
-              if (shares.length == 1) const Text('No one else owes on this expense.'),
               const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    final lines = shares.map((r) => '${r['person_id']}: ${_format(r['amount_minor'] as int)}').join('\n');
-                    Clipboard.setData(ClipboardData(text: 'Even expense: ${expense.title}\nPaid by: ${expense.paidBy}\nTotal: ${_format(expense.amountMinor)}\n$lines'));
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Expense breakdown copied.')));
-                  },
-                  icon: const Icon(Icons.copy_rounded),
-                  label: const Text('Copy breakdown'),
-                ),
-              ),
-            ],
+              SizedBox(width: double.infinity, child: OutlinedButton.icon(
+                onPressed: () {
+                  final lines = shares.map((r) => '${r['person_id']}: ${_format(r['amount_minor'] as int)}').join('\n');
+                  Clipboard.setData(ClipboardData(text: 'EVEN · ${expense.title}\nPaid by: ${expense.paidBy}\nTotal: ${_format(expense.amountMinor)}\n$lines'));
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Breakdown copied.')));
+                },
+                icon: const Icon(Icons.copy_all_rounded), label: const Text('Copy full breakdown'),
+              )),
+            ]),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
