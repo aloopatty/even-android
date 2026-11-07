@@ -1094,6 +1094,7 @@ class _EvenHomeState extends State<EvenHome> {
           Text('Set up your group and add everyone who may share expenses.', style: TextStyle(color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
           const SizedBox(height: 18),
           TextField(controller: name, autofocus: true, textCapitalization: TextCapitalization.words,
+            onChanged: (_) => setSheet(() {}),
             decoration: const InputDecoration(labelText: 'Group name', hintText: 'e.g. Goa trip')),
           const SizedBox(height: 16),
           Row(children: [
@@ -1415,9 +1416,6 @@ class _EvenHomeState extends State<EvenHome> {
       participants.insert(0, 'You');
     }
 
-    if (groupId != null) {
-      await _repo.updateGroupMembers(groupId!, participants);
-    }
     await _repo.addExpense(
       title: title.text.trim(),
       amountMinor: amountMinor,
