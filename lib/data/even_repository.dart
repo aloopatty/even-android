@@ -86,6 +86,57 @@ class EvenRepository {
   }
 
 
+  Future<void> updateExpense({
+    required String expenseId,
+    required String title,
+    required int amountMinor,
+    required String paidBy,
+    required List<String> participants,
+    required DateTime createdAt,
+    SplitMethod splitMethod = SplitMethod.equal,
+    List<SplitInput>? splitInputs,
+  }) async {
+    final cleanTitle = title.trim();
+    final cleanPayer = paidBy.trim();
+    final cleanParticipants = participants.map((person) => person.trim()).toList();
+    if (cleanTitle.isEmpty || amountMinor <= 0 || cleanPayer.isEmpty || cleanParticipants.isEmpty ||
+        cleanParticipants.any((person) => person.isEmpty) ||
+        cleanParticipants.toSet().length != cleanParticipants.length ||
+        !cleanParticipants.contains(cleanPayer)) {
+      throw ArgumentError('Enter a title, positive amount, a payer in the participant list and unique participants.');
+    }
+    final inputs = splitInputs ?? cleanParticipants.map((person) => SplitInput(personId: person)).toList();
+    if (inputs.length != cleanParticipants.length ||
+        inputs.map((input) => input.personId).toSet().length != cleanParticipants.length ||
+        !inputs.every((input) => cleanParticipants.contains(input.personId))) {
+      throw ArgumentError('Split inputs must match the selected participants exactly.');
+    }
+    final shares = SplitEngine.split(totalMinor: amountMinor, participants: inputs, method: splitMethod);
+    final db = await _database.database;
+    await db.transaction((txn) async {
+      final changed = await txn.update('expenses', {
+        'title': cleanTitle,
+        'amount_minor': amountMinor,
+        'paid_by': cleanPayer,
+        'split_method': splitMethod.name,
+        'created_at': createdAt.millisecondsSinceEpoch,
+      }, where: 'id = ? AND deleted_at IS NULL', whereArgs: [expenseId]);
+      if (changed == 0) throw StateError('Expense not found or already deleted.');
+      await txn.delete('expense_shares', where: 'expense_id = ?', whereArgs: [expenseId]);
+      final batch = txn.batch();
+      shares.forEach((person, amount) => batch.insert('expense_shares', {
+        'expense_id': expenseId, 'person_id': person, 'amount_minor': amount,
+      }));
+      await batch.commit(noResult: true);
+      await txn.insert('activity', {
+        'id': _uuid.v4(),
+        'event_type': 'expense_updated',
+        'description': 'Updated $cleanTitle',
+        'created_at': DateTime.now().millisecondsSinceEpoch,
+      });
+    });
+  }
+
   /// Positive values are owed to a person; negative values are owed by them.
   Future<Map<String, int>> netBalances() async {
     final db = await _database.database;
