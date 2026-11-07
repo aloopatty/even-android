@@ -21,11 +21,25 @@ class EvenRepository {
     return rows.map(EvenExpense.fromMap).toList();
   }
 
+  Future<List<Map<String, Object?>>> expenseShares(String expenseId) async {
+    final db = await _database.database;
+    return db.query('expense_shares', columns: ['person_id', 'amount_minor'],
+      where: 'expense_id = ?', whereArgs: [expenseId], orderBy: 'person_id COLLATE NOCASE');
+  }
+
   Future<void> addGroup(String name, List<String> members) async {
     final clean = members.map((e) => e.trim()).where((e) => e.isNotEmpty).toSet().toList();
     if (!clean.contains('You')) clean.insert(0, 'You');
     final db = await _database.database;
     await db.insert('groups', {'id': _uuid.v4(), 'name': name.trim(), 'members': clean.join('|'), 'created_at': DateTime.now().millisecondsSinceEpoch});
+  }
+
+  Future<void> updateGroupMembers(String groupId, List<String> members) async {
+    final clean = members.map((person) => person.trim()).where((person) => person.isNotEmpty).toSet().toList();
+    if (!clean.contains('You')) clean.insert(0, 'You');
+    final db = await _database.database;
+    final changed = await db.update('groups', {'members': clean.join('|')}, where: 'id = ? AND archived = 0', whereArgs: [groupId]);
+    if (changed == 0) throw StateError('Group not found.');
   }
 
   Future<void> addExpense({
