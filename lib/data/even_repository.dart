@@ -1,5 +1,7 @@
 import 'package:uuid/uuid.dart';
 import '../domain/models.dart';
+import '../domain/balance_engine.dart';
+import '../domain/split_engine.dart';
 import '../domain/split_engine.dart';
 import 'even_database.dart';
 
@@ -67,6 +69,74 @@ class EvenRepository {
       shares.forEach((person, amount) => batch.insert('expense_shares', {'expense_id': id, 'person_id': person, 'amount_minor': amount}));
       await batch.commit(noResult: true);
       await txn.insert('activity', {'id': _uuid.v4(), 'event_type': 'expense_added', 'description': 'Added $title', 'created_at': DateTime.now().millisecondsSinceEpoch});
+    });
+  }
+
+
+  /// Positive values are owed to a person; negative values are owed by them.
+  Future<Map<String, int>> netBalances() async {
+    final db = await _database.database;
+    final expenses = await db.query('expenses',
+      columns: ['id', 'amount_minor', 'paid_by', 'deleted_at'],
+      where: 'deleted_at IS NULL');
+    final ids = expenses.map((row) => row['id'] as String).toList();
+    final shares = <Map<String, Object?>>[];
+    if (ids.isNotEmpty) {
+      final marks = List.filled(ids.length, '?').join(',');
+      shares.addAll(await db.rawQuery(
+        'SELECT expense_id, person_id, amount_minor FROM expense_shares WHERE expense_id IN ($marks)', ids));
+    }
+    final settlements = await db.query('settlements',
+      columns: ['from_person', 'to_person', 'amount_minor', 'deleted_at'],
+      where: 'deleted_at IS NULL');
+    return BalanceEngine.calculate(expenses: expenses, shares: shares, settlements: settlements);
+  }
+
+  Future<List<Transfer>> suggestedTransfers() async =>
+      BalanceEngine.suggestedTransfers(await netBalances());
+
+  Future<List<Map<String, Object?>>> settlementHistory({int limit = 100}) async {
+    final db = await _database.database;
+    return db.query('settlements', where: 'deleted_at IS NULL',
+      orderBy: 'created_at DESC', limit: limit);
+  }
+
+  Future<void> recordSettlement({
+    required String fromPerson, required String toPerson,
+    required int amountMinor, String? note,
+  }) async {
+    final from = fromPerson.trim();
+    final to = toPerson.trim();
+    if (from.isEmpty || to.isEmpty || from == to || amountMinor <= 0) {
+      throw ArgumentError('Choose two different people and a positive amount.');
+    }
+    final db = await _database.database;
+    await db.transaction((txn) async {
+      await txn.insert('settlements', {
+        'id': _uuid.v4(), 'from_person': from, 'to_person': to,
+        'amount_minor': amountMinor, 'currency': 'INR', 'note': note?.trim(),
+        'created_at': DateTime.now().millisecondsSinceEpoch,
+      });
+      await txn.insert('activity', {
+        'id': _uuid.v4(), 'event_type': 'settlement_recorded',
+        'description': '$from paid $to', 'created_at': DateTime.now().millisecondsSinceEpoch,
+      });
+    });
+  }
+
+  /// Soft-delete a settlement so the audit trail is retained.
+  Future<void> voidSettlement(String settlementId) async {
+    final db = await _database.database;
+    await db.transaction((txn) async {
+      final changed = await txn.update('settlements',
+        {'deleted_at': DateTime.now().millisecondsSinceEpoch},
+        where: 'id = ? AND deleted_at IS NULL', whereArgs: [settlementId]);
+      if (changed == 0) throw StateError('Settlement not found or already reversed.');
+      await txn.insert('activity', {
+        'id': _uuid.v4(), 'event_type': 'settlement_reversed',
+        'description': 'A settlement was reversed',
+        'created_at': DateTime.now().millisecondsSinceEpoch,
+      });
     });
   }
 

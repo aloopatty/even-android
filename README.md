@@ -10,10 +10,12 @@ Included:
 - Create groups and record expenses locally.
 - Equal split calculation using integer minor units (paise), with exact remainder handling.
 - Greedy debt simplification engine.
+- Live net balances calculated from expense shares and recorded settlements.
+- Suggested settlement transfers, soft-delete reversal and audit events.
 - Automated tests for split correctness and debt simplification.
 - GitHub Actions workflow that generates an Android platform project, tests the app and uploads a release APK.
 
-Not yet implemented: multi-payer entry UI, arbitrary custom split UI, friends/private ledger UI, cloud authentication/sync, OCR, recurring scheduling, charts, CSV/JSON export, push notifications, biometric lock and payment-provider integrations. The database schema anticipates several of these, but a schema table is not a completed feature. These will be built and tested in later milestones.
+Not yet implemented: multi-payer entry UI, arbitrary custom split UI, friends/private ledger UI, identity-backed friends/private ledgers, group-scoped settlements, cloud authentication/sync, OCR, recurring scheduling, charts, CSV/JSON export, push notifications, biometric lock and payment-provider integrations. The database schema anticipates several of these, but a schema table is not a completed feature. These will be built and tested in later milestones.
 
 ## Build an APK using GitHub (recommended for Windows)
 
