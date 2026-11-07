@@ -22,10 +22,90 @@ class EvenRepository {
   }
 
   Future<void> addGroup(String name, List<String> members) async {
-    final clean = members.map((e) => e.trim()).where((e) => e.isNotEmpty).toSet().toList();
-    if (!clean.contains('You')) clean.insert(0, 'You');
+    final cleanName = name.trim();
+    if (cleanName.isEmpty) throw ArgumentError('Group name cannot be empty.');
+    final clean = <String>[];
+    final seen = <String>{};
+    for (final raw in members) {
+      final value = raw.trim();
+      if (value.isNotEmpty && seen.add(value.toLowerCase())) clean.add(value);
+    }
+    if (seen.add('you')) clean.insert(0, 'You');
     final db = await _database.database;
-    await db.insert('groups', {'id': _uuid.v4(), 'name': name.trim(), 'members': clean.join('|'), 'created_at': DateTime.now().millisecondsSinceEpoch});
+    final id = _uuid.v4();
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await db.transaction((txn) async {
+      await txn.insert('groups', {'id': id, 'name': cleanName, 'members': clean.join('|'), 'created_at': now});
+      final batch = txn.batch();
+      for (final person in clean) {
+        batch.insert('group_members', {
+          'group_id': id, 'person_id': person.toLowerCase(), 'display_name': person,
+          'role': person == 'You' ? 'owner' : 'member', 'added_at': now,
+        });
+      }
+      await batch.commit(noResult: true);
+    });
+  }
+
+  Future<List<String>> groupMembers(String groupId) async {
+    final db = await _database.database;
+    final rows = await db.query('group_members', columns: ['display_name'],
+      where: 'group_id = ?', whereArgs: [groupId],
+      orderBy: "CASE WHEN role = 'owner' THEN 0 ELSE 1 END, added_at");
+    return rows.map((row) => row['display_name'] as String).toList();
+  }
+
+  Future<List<EvenExpense>> groupExpenses(String groupId) async {
+    final db = await _database.database;
+    final rows = await db.query('expenses',
+      where: 'group_id = ? AND deleted_at IS NULL',
+      whereArgs: [groupId], orderBy: 'created_at DESC', limit: 100);
+    return rows.map(EvenExpense.fromMap).toList();
+  }
+
+  Future<void> addGroupMember(String groupId, String displayName) async {
+    final name = displayName.trim();
+    if (name.isEmpty) throw ArgumentError('Enter a person's name.');
+    final db = await _database.database;
+    await db.transaction((txn) async {
+      final rows = await txn.query('group_members', columns: ['person_id'],
+        where: 'group_id = ?', whereArgs: [groupId]);
+      if (rows.any((row) => (row['person_id'] as String).toLowerCase() == name.toLowerCase())) {
+        throw ArgumentError('That person is already in this group.');
+      }
+      await txn.insert('group_members', {
+        'group_id': groupId, 'person_id': name.toLowerCase(), 'display_name': name,
+        'role': 'member', 'added_at': DateTime.now().millisecondsSinceEpoch,
+      });
+      final group = (await txn.query('groups', columns: ['members'],
+        where: 'id = ?', whereArgs: [groupId])).first;
+      final names = (group['members'] as String? ?? '').split('|')
+        .where((value) => value.isNotEmpty).toList()..add(name);
+      await txn.update('groups', {'members': names.join('|')}, where: 'id = ?', whereArgs: [groupId]);
+    });
+  }
+
+  Future<void> removeGroupMember(String groupId, String displayName) async {
+    final name = displayName.trim();
+    if (name.toLowerCase() == 'you') throw ArgumentError('The group owner cannot be removed.');
+    final db = await _database.database;
+    await db.transaction((txn) async {
+      final refs = await txn.rawQuery('''
+        SELECT COUNT(*) AS total FROM expense_shares s
+        INNER JOIN expenses e ON e.id = s.expense_id
+        WHERE e.group_id = ? AND e.deleted_at IS NULL AND lower(s.person_id) = lower(?)
+      ''', [groupId, name]);
+      if ((refs.first['total'] as int) > 0) {
+        throw StateError('This person has expense history in the group and cannot be removed.');
+      }
+      await txn.delete('group_members', where: 'group_id = ? AND person_id = ?',
+        whereArgs: [groupId, name.toLowerCase()]);
+      final group = (await txn.query('groups', columns: ['members'],
+        where: 'id = ?', whereArgs: [groupId])).first;
+      final names = (group['members'] as String? ?? '').split('|')
+        .where((value) => value.isNotEmpty && value.toLowerCase() != name.toLowerCase()).toList();
+      await txn.update('groups', {'members': names.join('|')}, where: 'id = ?', whereArgs: [groupId]);
+    });
   }
 
   Future<void> addExpense({

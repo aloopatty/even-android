@@ -7,6 +7,7 @@ import 'domain/models.dart';
 import 'domain/balance_engine.dart';
 import 'domain/money.dart';
 import 'domain/split_engine.dart';
+import 'screens/group_detail_page.dart';
 
 
 void main() async {
@@ -136,7 +137,29 @@ class _EvenHomeState extends State<EvenHome> {
   String _greeting() { final hour = DateTime.now().hour; return hour < 12 ? 'Good morning.' : hour < 17 ? 'Good afternoon.' : 'Good evening.'; }
   Widget _sectionHeader(String title, {String? action, VoidCallback? onTap}) => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, letterSpacing: -0.4)), if (action != null) TextButton(onPressed: onTap, child: Text(action, style: const TextStyle(color: Color(0xFF456B58), fontWeight: FontWeight.w600)))]);
   Widget _emptyCard({required IconData icon, required String title, required String subtitle, required String action, required VoidCallback onTap}) => Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22), border: Border.all(color: const Color(0xFFECECE6))), child: Column(children: [Icon(icon, size: 28, color: const Color(0xFF6F8275)), const SizedBox(height: 10), Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)), const SizedBox(height: 5), Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF85877F), fontSize: 12, height: 1.4)), const SizedBox(height: 10), TextButton(onPressed: onTap, child: Text(action, style: const TextStyle(color: Color(0xFF456B58), fontWeight: FontWeight.w700)))]));
-  Widget _groupTile(EvenGroup group) => Container(margin: const EdgeInsets.only(bottom: 9), padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(19)), child: Row(children: [Container(width: 43, height: 43, decoration: BoxDecoration(color: _groupColor(group.name), borderRadius: BorderRadius.circular(14)), child: Icon(_groupIcon(group.name), color: const Color(0xFF34483C))), const SizedBox(width: 13), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(group.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)), const SizedBox(height: 3), Text('${group.members.length} members', style: const TextStyle(color: Color(0xFF85877F), fontSize: 11))])), const Icon(Icons.chevron_right_rounded, color: Color(0xFF9A9D95))]));
+  Widget _groupTile(EvenGroup group) => InkWell(
+    borderRadius: BorderRadius.circular(19),
+    onTap: () async {
+      await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => GroupDetailPage(group: group, repository: _repo),
+      ));
+      await _refresh();
+    },
+    child: Container(margin: const EdgeInsets.only(bottom: 9), padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(19)),
+      child: Row(children: [
+        Container(width: 43, height: 43, decoration: BoxDecoration(color: _groupColor(group.name), borderRadius: BorderRadius.circular(14)),
+          child: Icon(_groupIcon(group.name), color: const Color(0xFF34483C))),
+        const SizedBox(width: 13),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(group.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+          const SizedBox(height: 3),
+          Text('${group.members.length} members', style: const TextStyle(color: Color(0xFF85877F), fontSize: 11)),
+        ])),
+        const Icon(Icons.chevron_right_rounded, color: Color(0xFF9A9D95)),
+      ]),
+    ),
+  );
   Color _groupColor(String name) { final n = name.toLowerCase(); if (n.contains('trip') || n.contains('travel')) return const Color(0xFFECE8DB); if (n.contains('home') || n.contains('flat')) return const Color(0xFFE5EBE4); return const Color(0xFFEAE7EF); }
   IconData _groupIcon(String name) { final n = name.toLowerCase(); if (n.contains('trip') || n.contains('travel')) return Icons.flight_rounded; if (n.contains('home') || n.contains('flat')) return Icons.home_rounded; return Icons.group_rounded; }
   Widget _expenseTile(EvenExpense expense) => Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(17)), child: Row(children: [Container(width: 40, height: 40, decoration: BoxDecoration(color: const Color(0xFFF0F0EB), borderRadius: BorderRadius.circular(13)), child: const Icon(Icons.receipt_outlined, color: Color(0xFF53675D), size: 19)), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(expense.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)), const SizedBox(height: 3), Text(DateFormat('d MMM · h:mm a').format(expense.createdAt), style: const TextStyle(color: Color(0xFF8A8C84), fontSize: 10))])), Text(_format(expense.amountMinor), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13))]));

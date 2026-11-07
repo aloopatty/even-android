@@ -11,7 +11,7 @@ class EvenDatabase {
     final root = await getDatabasesPath();
     _db = await openDatabase(
       p.join(root, 'even.db'),
-      version: 3,
+      version: 4,
       onCreate: (db, version) async {
         await db.execute('''CREATE TABLE groups (
           id TEXT PRIMARY KEY, name TEXT NOT NULL, members TEXT NOT NULL,
@@ -50,6 +50,29 @@ class EvenDatabase {
         }
         if (oldVersion < 3) {
           await db.execute('CREATE INDEX idx_settlements_active ON settlements(deleted_at, created_at DESC)');
+        }
+        if (oldVersion < 4) {
+          await db.execute('''CREATE TABLE group_members (
+            group_id TEXT NOT NULL, person_id TEXT NOT NULL, display_name TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'member', added_at INTEGER NOT NULL,
+            PRIMARY KEY (group_id, person_id),
+            FOREIGN KEY(group_id) REFERENCES groups(id) ON DELETE CASCADE
+          )''');
+          final groups = await db.query('groups', columns: ['id', 'members']);
+          for (final group in groups) {
+            final groupId = group['id'] as String;
+            final names = (group['members'] as String? ?? 'You')
+              .split('|').map((name) => name.trim()).where((name) => name.isNotEmpty).toSet();
+            if (!names.contains('You')) names.add('You');
+            for (final name in names) {
+              await db.insert('group_members', {
+                'group_id': groupId, 'person_id': name.toLowerCase(),
+                'display_name': name, 'role': name == 'You' ? 'owner' : 'member',
+                'added_at': DateTime.now().millisecondsSinceEpoch,
+              });
+            }
+          }
+          await db.execute('CREATE INDEX idx_group_members_group ON group_members(group_id, added_at)');
         }
       },
     );
