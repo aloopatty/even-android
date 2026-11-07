@@ -843,6 +843,82 @@ class _EvenHomeState extends State<EvenHome> {
     ]);
   }
 
+  Widget _insightTrends() {
+    final today = DateTime.now();
+    final daily = List<int>.generate(7, (index) {
+      final day = DateTime(today.year, today.month, today.day).subtract(Duration(days: 6 - index));
+      return _expenses.where((e) => e.createdAt.year == day.year && e.createdAt.month == day.month && e.createdAt.day == day.day)
+        .fold<int>(0, (sum, e) => sum + e.amountMinor);
+    });
+    final maxDaily = daily.fold<int>(0, (maxValue, value) => value > maxValue ? value : maxValue);
+    final groupTotals = <String, int>{};
+    for (final expense in _expenses) {
+      final groupName = expense.groupId == null
+        ? 'Personal'
+        : (_groups.where((g) => g.id == expense.groupId).map((g) => g.name).firstOrNull ?? 'Archived group');
+      groupTotals[groupName] = (groupTotals[groupName] ?? 0) + expense.amountMinor;
+    }
+    final rankedGroups = groupTotals.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final maxGroup = rankedGroups.isEmpty ? 0 : rankedGroups.first.value;
+    final colors = Theme.of(context).colorScheme;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('Spending patterns', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+      const SizedBox(height: 10),
+      Container(padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.45))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Last 7 days', style: TextStyle(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 14),
+          SizedBox(height: 104, child: Row(crossAxisAlignment: CrossAxisAlignment.end,
+            children: List.generate(7, (index) {
+              final value = daily[index];
+              final day = today.subtract(Duration(days: 6 - index));
+              final height = maxDaily == 0 ? 4.0 : (value / maxDaily * 68).clamp(4.0, 68.0);
+              return Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: Column(
+                mainAxisAlignment: MainAxisAlignment.end, children: [
+                  if (value > 0) Text(NumberFormat.compact(locale: 'en_IN').format(value / 100),
+                    style: TextStyle(fontSize: 9, color: colors.onSurfaceVariant)),
+                  const SizedBox(height: 4),
+                  Container(height: height, decoration: BoxDecoration(
+                    color: value == 0 ? colors.surfaceContainerHighest : colors.primary,
+                    borderRadius: BorderRadius.circular(7))),
+                  const SizedBox(height: 6),
+                  Text(DateFormat('E').format(day).substring(0, 1),
+                    style: TextStyle(fontSize: 10, color: colors.onSurfaceVariant)),
+                ],
+              )));
+            }),
+          )),
+        ]),
+      ),
+      const SizedBox(height: 12),
+      Container(padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.45))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Where your spending goes', style: TextStyle(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 12),
+          if (rankedGroups.isEmpty)
+            Text('Your group and personal spending will appear here.', style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12))
+          else ...rankedGroups.take(5).map((entry) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Expanded(child: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                Text(_format(entry.value), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+              ]),
+              const SizedBox(height: 6),
+              ClipRRect(borderRadius: BorderRadius.circular(10), child: LinearProgressIndicator(
+                minHeight: 7, value: maxGroup == 0 ? 0 : entry.value / maxGroup,
+                color: colors.primary, backgroundColor: colors.surfaceContainerHighest)),
+            ]),
+          )),
+        ]),
+      ),
+    ]);
+  }
+
   Widget _insightsPage() => FutureBuilder<Map<String, int>>(
     future: _repo.netBalances(),
     builder: (context, snapshot) {
@@ -1197,6 +1273,8 @@ class _EvenHomeState extends State<EvenHome> {
                 ),
                 const SizedBox(height: 22),
          _insightSummaryCards(),
+         const SizedBox(height: 14),
+         _insightTrends(),
 
                 const Text(
                   'Add expense',
