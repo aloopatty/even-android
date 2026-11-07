@@ -16,6 +16,12 @@ class EvenDatabase {
         await db.execute('''CREATE TABLE groups (
           id TEXT PRIMARY KEY, name TEXT NOT NULL, members TEXT NOT NULL,
           created_at INTEGER NOT NULL, archived INTEGER NOT NULL DEFAULT 0)''');
+        await db.execute('''CREATE TABLE group_members (
+          group_id TEXT NOT NULL, person_id TEXT NOT NULL, display_name TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'member', added_at INTEGER NOT NULL,
+          PRIMARY KEY (group_id, person_id),
+          FOREIGN KEY(group_id) REFERENCES groups(id) ON DELETE CASCADE)''');
+        await db.execute('CREATE INDEX idx_group_members_group ON group_members(group_id, added_at)');
         await db.execute('''CREATE TABLE expenses (
           id TEXT PRIMARY KEY, title TEXT NOT NULL, amount_minor INTEGER NOT NULL,
           currency TEXT NOT NULL DEFAULT 'INR', paid_by TEXT NOT NULL,
