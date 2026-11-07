@@ -193,11 +193,11 @@ class _EvenHomeState extends State<EvenHome> {
     return Scaffold(
       body: SafeArea(child: AnimatedSwitcher(duration: const Duration(milliseconds: 220), child: KeyedSubtree(key: ValueKey(_tab), child: pages[_tab]))),
       floatingActionButton: _tab == 0 ? FloatingActionButton.extended(
-        onPressed: _showPlacePicker, backgroundColor: const Color(0xFF5146C8), foregroundColor: Colors.white,
+        onPressed: _showPlacePicker, backgroundColor: Theme.of(context).colorScheme.primary, foregroundColor: Theme.of(context).colorScheme.onPrimary,
         icon: const Icon(Icons.add_rounded), label: const Text('Add expense', style: TextStyle(fontWeight: FontWeight.w600)),
       ) : null,
       bottomNavigationBar: NavigationBar(
-        height: 72, selectedIndex: _tab, backgroundColor: const Color(0xFFFAF9FF), indicatorColor: const Color(0xFFE8E4FF),
+        height: 72, selectedIndex: _tab, backgroundColor: Theme.of(context).colorScheme.surface, indicatorColor: Theme.of(context).colorScheme.secondaryContainer,
         onDestinationSelected: (value) => setState(() => _tab = value),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.grid_view_rounded), label: 'Home'),
@@ -634,7 +634,7 @@ class _EvenHomeState extends State<EvenHome> {
     final name = TextEditingController();
     final result = await showModalBottomSheet<List<String>>(
       context: context, isScrollControlled: true, useSafeArea: true, showDragHandle: true,
-      backgroundColor: const Color(0xFFF7F7FB),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       builder: (ctx) => StatefulBuilder(builder: (ctx, setSheet) {
         final candidates = <String>{'You', ...suggestions, ...selected}.toList();
         return Padding(
@@ -669,7 +669,7 @@ class _EvenHomeState extends State<EvenHome> {
   }
 
   Future<SplitMethod?> _chooseSplitMethod(SplitMethod current) => showModalBottomSheet<SplitMethod>(
-    context: context, useSafeArea: true, showDragHandle: true, backgroundColor: const Color(0xFFF7F7FB),
+    context: context, useSafeArea: true, showDragHandle: true, backgroundColor: Theme.of(context).colorScheme.surface,
     builder: (ctx) => Padding(padding: const EdgeInsets.fromLTRB(18, 8, 18, 24), child: Column(mainAxisSize: MainAxisSize.min, children: [
       const Align(alignment: Alignment.centerLeft, child: Text('Split method', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF191B2E)))),
       const SizedBox(height: 14),
@@ -719,7 +719,7 @@ class _EvenHomeState extends State<EvenHome> {
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFFFAF9FF),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, localSet) => Padding(
           padding: EdgeInsets.fromLTRB(
@@ -772,26 +772,65 @@ class _EvenHomeState extends State<EvenHome> {
                 ),
                 const SizedBox(height: 12),
                 const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE9E6F5))),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(children: [const Expanded(child: Text('People in this expense', style: TextStyle(fontWeight: FontWeight.w700))), Text('${selectedPeople.length} selected', style: const TextStyle(color: Color(0xFF777C91), fontSize: 12))]),
-                    const SizedBox(height: 10),
-                    Wrap(spacing: 7, runSpacing: 7, children: selectedPeople.map((person) => InputChip(
-                      label: Text(person), onDeleted: person == 'You' ? null : () => localSet(() { selectedPeople.remove(person); if (paidBy == person) paidBy = selectedPeople.first; }),
-                      backgroundColor: const Color(0xFFEAE9FF), deleteIconColor: const Color(0xFF5148D9),
-                    )).toList()),
-                    Align(alignment: Alignment.centerLeft, child: TextButton.icon(
-                      onPressed: () async {
-                        final suggestions = _groups.expand((g) => g.members).toSet().toList();
-                        final chosen = await _pickPeople(selectedPeople, suggestions: suggestions);
-                        if (chosen != null && chosen.isNotEmpty) localSet(() => selectedPeople = chosen);
-                      },
-                      icon: const Icon(Icons.person_add_alt_1_rounded), label: const Text('Add or remove people'),
-                    )),
-                  ]),
-                ),
+                Builder(builder: (themeContext) {
+                  final colors = Theme.of(themeContext).colorScheme;
+                  return Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(22),
+                      border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.65))),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Row(children: [
+                        Expanded(child: Text('Split with', style: Theme.of(themeContext).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700))),
+                        Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(color: colors.secondaryContainer, borderRadius: BorderRadius.circular(30)),
+                          child: Text('${selectedPeople.length} people', style: TextStyle(color: colors.onSecondaryContainer, fontSize: 12, fontWeight: FontWeight.w700))),
+                      ]),
+                      const SizedBox(height: 5),
+                      Text('Choose who should share this expense.', style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12)),
+                      const SizedBox(height: 14),
+                      Wrap(spacing: 9, runSpacing: 10, children: selectedPeople.map((person) {
+                        final isYou = person == 'You';
+                        final initials = person.trim().isEmpty ? '?' : person.trim().characters.first.toUpperCase();
+                        return Container(
+                          padding: const EdgeInsets.fromLTRB(8, 7, 7, 7),
+                          decoration: BoxDecoration(color: isYou ? colors.primaryContainer : colors.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: isYou ? colors.primary.withValues(alpha: 0.25) : colors.outlineVariant.withValues(alpha: 0.55))),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            CircleAvatar(radius: 15, backgroundColor: isYou ? colors.primary : colors.secondaryContainer,
+                              child: Text(initials, style: TextStyle(color: isYou ? colors.onPrimary : colors.onSecondaryContainer, fontSize: 11, fontWeight: FontWeight.w800))),
+                            const SizedBox(width: 8),
+                            Text(person, style: TextStyle(color: colors.onSurface, fontWeight: FontWeight.w600, fontSize: 13)),
+                            if (!isYou) ...[
+                              const SizedBox(width: 5),
+                              InkWell(customBorder: const CircleBorder(),
+                                onTap: () => localSet(() {
+                                  selectedPeople.remove(person);
+                                  if (paidBy == person) paidBy = selectedPeople.first;
+                                }),
+                                child: Padding(padding: const EdgeInsets.all(3), child: Icon(Icons.close_rounded, size: 16, color: colors.onSurfaceVariant))),
+                            ],
+                          ]),
+                        );
+                      }).toList()),
+                      const SizedBox(height: 14),
+                      SizedBox(width: double.infinity, child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final suggestions = _groups.expand((g) => g.members).toSet().toList();
+                          final chosen = await _pickPeople(selectedPeople, suggestions: suggestions);
+                          if (chosen != null && chosen.isNotEmpty) localSet(() {
+                            selectedPeople = chosen;
+                            if (!selectedPeople.contains(paidBy)) paidBy = selectedPeople.first;
+                          });
+                        },
+                        icon: const Icon(Icons.person_add_alt_1_rounded), label: const Text('Manage people'),
+                        style: OutlinedButton.styleFrom(foregroundColor: colors.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 14), side: BorderSide(color: colors.outlineVariant),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                      )),
+                    ]),
+                  );
+                }),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: selectedPeople.contains(paidBy) ? paidBy : selectedPeople.first,
@@ -801,7 +840,7 @@ class _EvenHomeState extends State<EvenHome> {
                 ),
                 const SizedBox(height: 12),
                 Material(
-                  color: Colors.white, borderRadius: BorderRadius.circular(18),
+                  color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(18),
                   child: InkWell(borderRadius: BorderRadius.circular(18), onTap: () async {
                     final chosen = await _chooseSplitMethod(splitMethod);
                     if (chosen != null) localSet(() { splitMethod = chosen; splitValues.clear(); for (final person in selectedPeople) { splitEntryControllers.putIfAbsent(person, () => TextEditingController()); } });
