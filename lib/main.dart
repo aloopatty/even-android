@@ -6,13 +6,22 @@ import 'data/even_repository.dart';
 import 'domain/models.dart';
 
 
-/// Converts rupees into integer paise without using double.
-///
-/// Examples:
-/// ₹100       -> 10000
-/// ₹100.50    -> 10050
-/// ₹0.75      -> 75
-/// ₹1500.05   -> 150005
+int? parseRupeesToPaise(String input) {
+  final value = input.trim();
+
+  if (!RegExp(r'^\d+(\.\d{1,2})?$').hasMatch(value)) {
+    return null;
+  }
+
+  final parts = value.split('.');
+  final rupees = int.parse(parts[0]);
+  final paise = parts.length > 1
+      ? int.parse(parts[1].padRight(2, '0'))
+      : 0;
+
+  return rupees * 100 + paise;
+}
+
 int? parseRupeesToPaise(String input) {
   final value = input.trim();
 
