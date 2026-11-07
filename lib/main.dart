@@ -111,7 +111,7 @@ class _EvenAppState extends State<EvenApp> {
         snackBarTheme: SnackBarThemeData(
           behavior: SnackBarBehavior.floating,
           backgroundColor: dark ? const Color(0xFF303B33) : const Color(0xFF263D31),
-          contentTextStyle: const TextStyle(color: Theme.of(context).colorScheme.surface),
+          contentTextStyle: const TextStyle(color: Colors.white),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       );
