@@ -234,10 +234,10 @@ class _EvenHomeState extends State<EvenHome> {
         ),
       ]),
       const SizedBox(height: 26),
-      Material(color: const Color(0xFF5146C8), borderRadius: BorderRadius.circular(26), child: InkWell(borderRadius: BorderRadius.circular(26), onTap: _showTotalExpenses, child: Container(padding: const EdgeInsets.all(22), decoration: BoxDecoration(borderRadius: BorderRadius.circular(26)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Material(color: Theme.of(context).colorScheme.primary, borderRadius: BorderRadius.circular(26), child: InkWell(borderRadius: BorderRadius.circular(26), onTap: _showTotalExpenses, child: Container(padding: const EdgeInsets.all(22), decoration: BoxDecoration(borderRadius: BorderRadius.circular(26)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Text('TOTAL EXPENSES', style: TextStyle(color: Color(0xFFB9C8BE), fontSize: 11, letterSpacing: 1.5, fontWeight: FontWeight.w700)),
         const SizedBox(height: 10),
-        Text(_format(_spent), style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w700, letterSpacing: -1.2)),
+        Text(_format(_spent), style: TextStyle(color: Theme.of(context).colorScheme.onPrimary, fontSize: 34, fontWeight: FontWeight.w700, letterSpacing: -1.2)),
         const SizedBox(height: 17),
         const Divider(color: Color(0xFF625A9B), height: 1),
         const SizedBox(height: 14),
@@ -248,7 +248,7 @@ class _EvenHomeState extends State<EvenHome> {
         ]),
       ])))),
       const SizedBox(height: 28),
-      Material(color: Colors.white, borderRadius: BorderRadius.circular(19), child: InkWell(
+      Material(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(19), child: InkWell(
         borderRadius: BorderRadius.circular(19), onTap: _openPersonal,
         child: Padding(padding: const EdgeInsets.all(15), child: Row(children: [
           Container(width: 43, height: 43, decoration: BoxDecoration(color: const Color(0xFFEAE7FF), borderRadius: BorderRadius.circular(14)),
@@ -296,7 +296,7 @@ class _EvenHomeState extends State<EvenHome> {
   }
 
   String _initials(String value) {
-    final parts = value.trim().split(RegExp(r'\\s+')).where((part) => part.isNotEmpty).toList();
+    final parts = value.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty).toList();
     if (parts.isEmpty) return 'Y';
     if (parts.length == 1) return parts.first.characters.first.toUpperCase();
     return '${parts.first.characters.first}${parts.last.characters.first}'.toUpperCase();
@@ -444,10 +444,31 @@ class _EvenHomeState extends State<EvenHome> {
 
   String _greeting() { final hour = DateTime.now().hour; return hour < 12 ? 'Good morning.' : hour < 17 ? 'Good afternoon.' : 'Good evening.'; }
   Widget _sectionHeader(String title, {String? action, VoidCallback? onTap}) => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, letterSpacing: -0.4)), if (action != null) TextButton(onPressed: onTap, child: Text(action, style: const TextStyle(color: Color(0xFF6657D9), fontWeight: FontWeight.w600)))]);
-  Widget _emptyCard({required IconData icon, required String title, required String subtitle, required String action, required VoidCallback onTap}) => Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22), border: Border.all(color: const Color(0xFFE9E6F5))), child: Column(children: [Icon(icon, size: 28, color: const Color(0xFF6657D9)), const SizedBox(height: 10), Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)), const SizedBox(height: 5), Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF85877F), fontSize: 12, height: 1.4)), const SizedBox(height: 10), TextButton(onPressed: onTap, child: Text(action, style: const TextStyle(color: Color(0xFF6657D9), fontWeight: FontWeight.w700)))]));
+  Widget _emptyCard({required IconData icon, required String title, required String subtitle, required String action, required VoidCallback onTap}) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      child: Column(children: [
+        Icon(icon, size: 28, color: colors.primary),
+        const SizedBox(height: 10),
+        Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+        const SizedBox(height: 5),
+        Text(subtitle, textAlign: TextAlign.center,
+          style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12, height: 1.45)),
+        const SizedBox(height: 10),
+        TextButton(onPressed: onTap, child: Text(action,
+          style: TextStyle(color: colors.primary, fontWeight: FontWeight.w700))),
+      ]),
+    );
+  }
   Widget _groupTile(EvenGroup group) {
     return Material(
-      color: Colors.white,
+      color: Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(19),
       child: InkWell(
         borderRadius: BorderRadius.circular(19),
@@ -530,7 +551,7 @@ class _EvenHomeState extends State<EvenHome> {
         else
           ...sorted.map((entry) => Container(
             margin: const EdgeInsets.only(bottom: 9), padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)),
+            decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(18)),
             child: Row(children: [
               CircleAvatar(backgroundColor: const Color(0xFFEAE7FF),
                 child: Text(entry.key.isEmpty ? '?' : entry.key[0].toUpperCase(),
@@ -619,7 +640,7 @@ class _EvenHomeState extends State<EvenHome> {
     )),
   );
   Future<void> _showSettingInfo(String title, String message) async {
-    await showModalBottomSheet<void>(context: context, showDragHandle: true, backgroundColor: const Color(0xFFFAF9FF), builder: (ctx) => Padding(
+    await showModalBottomSheet<void>(context: context, showDragHandle: true, backgroundColor: Theme.of(context).colorScheme.surface, builder: (ctx) => Padding(
       padding: const EdgeInsets.fromLTRB(22, 8, 22, 28), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(title, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w700)),
         const SizedBox(height: 10), Text(message, style: const TextStyle(height: 1.5, color: Color(0xFF666879))),
@@ -700,7 +721,7 @@ class _EvenHomeState extends State<EvenHome> {
 
   Future<void> _showAddGroup() async {
     final name = TextEditingController();
-    final result = await showModalBottomSheet<bool>(context: context, isScrollControlled: true, backgroundColor: const Color(0xFFFAF9FF), builder: (ctx) => Padding(padding: EdgeInsets.fromLTRB(22, 20, 22, MediaQuery.of(ctx).viewInsets.bottom + 24), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [Center(child: Container(width: 38, height: 4, decoration: BoxDecoration(color: const Color(0xFFD5D6CF), borderRadius: BorderRadius.circular(4))),), const SizedBox(height: 22), const Text('New group', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700)), const SizedBox(height: 18), TextField(controller: name, autofocus: true, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Group name', hintText: 'e.g. Goa trip')), const SizedBox(height: 12), const Text('Add members after creating the group from the people picker.', style: TextStyle(color: Color(0xFF777C91), fontSize: 12)), const SizedBox(height: 18), SizedBox(width: double.infinity, child: FilledButton(onPressed: () { if (name.text.trim().isNotEmpty) Navigator.pop(ctx, true); }, style: FilledButton.styleFrom(backgroundColor: const Color(0xFF5146C8), padding: const EdgeInsets.all(16)), child: const Text('Create group')))])));
+    final result = await showModalBottomSheet<bool>(context: context, isScrollControlled: true, backgroundColor: Theme.of(context).colorScheme.surface, builder: (ctx) => Padding(padding: EdgeInsets.fromLTRB(22, 20, 22, MediaQuery.of(ctx).viewInsets.bottom + 24), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [Center(child: Container(width: 38, height: 4, decoration: BoxDecoration(color: const Color(0xFFD5D6CF), borderRadius: BorderRadius.circular(4))),), const SizedBox(height: 22), const Text('New group', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700)), const SizedBox(height: 18), TextField(controller: name, autofocus: true, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Group name', hintText: 'e.g. Goa trip')), const SizedBox(height: 12), const Text('Add members after creating the group from the people picker.', style: TextStyle(color: Color(0xFF777C91), fontSize: 12)), const SizedBox(height: 18), SizedBox(width: double.infinity, child: FilledButton(onPressed: () { if (name.text.trim().isNotEmpty) Navigator.pop(ctx, true); }, style: FilledButton.styleFrom(backgroundColor: const Color(0xFF5146C8), padding: const EdgeInsets.all(16)), child: const Text('Create group')))])));
     if (result == true) { await _repo.addGroup(name.text, const []); await _refresh(); }
     name.dispose();
   }
@@ -1074,7 +1095,7 @@ class _PlacePage extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(title)),
     floatingActionButton: FloatingActionButton.extended(onPressed: onAdd,
-      backgroundColor: const Color(0xFF5146C8), foregroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.primary, foregroundColor: Theme.of(context).colorScheme.onPrimary,
       icon: const Icon(Icons.add_rounded), label: const Text('Add expense')),
     body: ListView(padding: const EdgeInsets.fromLTRB(20, 8, 20, 100), children: [
       Row(children: [CircleAvatar(radius: 25, backgroundColor: const Color(0xFFEAE7FF),
