@@ -1,36 +1,23 @@
 /// Exact conversion between rupees and integer paise.
-/// No floating-point arithmetic is used for money.
+/// Money is stored as integer paise; no floating-point arithmetic is used.
 int? parseRupeesToPaise(String input) {
   final value = input.trim();
-  if (!RegExp(r'^(?:\d+(?:\.\d{0,2})?|\.\d{1,2})).hasMatch(value)) {
+  if (!RegExp(r'^(?:[0-9]+(?:\.[0-9]{0,2})?|\.[0-9]{1,2})$').hasMatch(value)) {
     return null;
   }
+
+  final parts = value.split('.');
+  final rupeesText = parts[0].isEmpty ? '0' : parts[0];
+  final paiseText = parts.length == 1
+      ? '00'
+      : (parts[1] + '00').substring(0, 2);
+
   try {
-    final parts = value.split('.');
-    final rupees = parts[0].isEmpty ? 0 : int.parse(parts[0]);
-    final paise = parts.length == 1
-        ? 0
-        : int.parse((parts[1] + '00').substring(0, 2));
-    return rupees * 100 + paise;
+    final total = BigInt.parse(rupeesText) * BigInt.from(100) +
+        BigInt.parse(paiseText);
+    if (total > BigInt.from(0x7fffffffffffffff)) return null;
+    return total.toInt();
   } on FormatException {
-    return null;
-  } on RangeError {
-    return null;
-  }
-}
-).hasMatch(value)) {
-    return null;
-  }
-  try {
-    final parts = value.split('.');
-    final rupees = parts[0].isEmpty ? 0 : int.parse(parts[0]);
-    final paise = parts.length == 1
-        ? 0
-        : int.parse((parts[1] + '00').substring(0, 2));
-    return rupees * 100 + paise;
-  } on FormatException {
-    return null;
-  } on RangeError {
     return null;
   }
 }
