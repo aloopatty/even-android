@@ -15,7 +15,7 @@ class EvenAuthGate extends StatefulWidget {
 class _EvenAuthGateState extends State<EvenAuthGate> {
   @override
   Widget build(BuildContext context) {
-    if (!EvenSupabaseConfig.isConfigured) return widget.child;
+    if (!EvenSupabaseConfig.isConfigured) return const _BackendConfigurationRequiredPage();
     final client = Supabase.instance.client;
     return StreamBuilder<AuthState>(
       stream: client.auth.onAuthStateChange,
@@ -226,6 +226,60 @@ class _EvenSignInPageState extends State<_EvenSignInPage> {
                   Text('By continuing, you agree to use EVEN responsibly. Your account keeps your shared expense data available across your devices.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: colors.onSurfaceVariant, fontSize: 11, height: 1.5)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Fail closed: never silently open a local-only account when cloud auth is
+/// required. The project URL and publishable key are supplied at build time.
+class _BackendConfigurationRequiredPage extends StatelessWidget {
+  const _BackendConfigurationRequiredPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(28),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Icon(Icons.cloud_off_rounded, size: 48, color: colors.primary),
+                  const SizedBox(height: 24),
+                  Text('EVEN', textAlign: TextAlign.center,
+                    style: TextStyle(color: colors.primary, fontWeight: FontWeight.w900,
+                      fontSize: 18, letterSpacing: 2)),
+                  const SizedBox(height: 16),
+                  Text('Secure sign-in is not configured',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 12),
+                  Text(
+                    'EVEN requires its Supabase project URL and publishable key before sign-in. '
+                    'This build will not open a local-only profile or pretend that cloud sync is active.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: colors.onSurfaceVariant, height: 1.5)),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(color: colors.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(16)),
+                    child: const Text(
+                      'Build this app with SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY. '
+                      'Never put a secret/service-role key in the Android app.',
+                      style: TextStyle(height: 1.5)),
+                  ),
                 ],
               ),
             ),
