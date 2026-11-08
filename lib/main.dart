@@ -11,6 +11,17 @@ import 'domain/money.dart';
 import 'domain/split_engine.dart';
 
 
+IconData _transactionIcon(String title) {
+  final value = title.toLowerCase();
+  if (RegExp(r'\b(cab|taxi|uber|ola|fuel|petrol|bus|train|flight|metro)\b').hasMatch(value)) return Icons.directions_car_rounded;
+  if (RegExp(r'\b(food|dinner|lunch|breakfast|restaurant|cafe|coffee|pizza|grocery|groceries)\b').hasMatch(value)) return Icons.restaurant_rounded;
+  if (RegExp(r'\b(hotel|stay|room|airbnb|hostel)\b').hasMatch(value)) return Icons.hotel_rounded;
+  if (RegExp(r'\b(movie|cinema|game|ticket|concert|museum)\b').hasMatch(value)) return Icons.local_activity_rounded;
+  if (RegExp(r'\b(shop|shopping|clothes|store|market)\b').hasMatch(value)) return Icons.shopping_bag_rounded;
+  if (RegExp(r'\b(bill|electricity|water|rent|wifi|internet)\b').hasMatch(value)) return Icons.receipt_long_rounded;
+  return Icons.receipt_rounded;
+}
+
 class EvenPalette {
   static const Color brand = Color(0xFF5B4BC4);
   static const Color lightBackground = Color(0xFFF7F6FC);
@@ -103,7 +114,7 @@ class _EvenAppState extends State<EvenApp> {
         colorScheme: scheme,
         scaffoldBackgroundColor: dark ? EvenPalette.darkBackground : EvenPalette.lightBackground,
         fontFamily: GoogleFonts.manrope().fontFamily,
-        textTheme: GoogleFonts.manropeTextTheme(ThemeData(brightness: brightness).textTheme),
+        textTheme: GoogleFonts.manropeTextTheme(ThemeData(brightness: brightness).textTheme).apply(fontSizeFactor: 1.06),
         appBarTheme: AppBarTheme(
           backgroundColor: scheme.surface,
           foregroundColor: scheme.onSurface,
@@ -266,13 +277,14 @@ class _EvenHomeState extends State<EvenHome> {
   Widget build(BuildContext context) {
     final pages = [
       _dashboard(),
+      _groupsPage(),
       _activityPage(),
       _insightsPage(),
       _settingsPage(),
     ];
     return Scaffold(
       body: SafeArea(child: AnimatedSwitcher(duration: const Duration(milliseconds: 220), child: KeyedSubtree(key: ValueKey(_tab), child: pages[_tab]))),
-      floatingActionButton: _tab == 0 ? FloatingActionButton.extended(
+      floatingActionButton: (_tab == 0 || _tab == 1) ? FloatingActionButton.extended(
         onPressed: _showPlacePicker, backgroundColor: Theme.of(context).colorScheme.primary, foregroundColor: Theme.of(context).colorScheme.onPrimary,
         icon: const Icon(Icons.add_rounded), label: const Text('Add expense', style: TextStyle(fontWeight: FontWeight.w600)),
       ) : null,
@@ -281,7 +293,8 @@ class _EvenHomeState extends State<EvenHome> {
         onDestinationSelected: (value) => setState(() => _tab = value),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.grid_view_rounded), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.receipt_long_rounded), label: 'Activity'),
+          NavigationDestination(icon: Icon(Icons.group_work_rounded), label: 'Groups'),
+          NavigationDestination(icon: Icon(Icons.receipt_long_rounded), label: 'Transactions'),
           NavigationDestination(icon: Icon(Icons.insights_rounded), label: 'Insights'),
           NavigationDestination(icon: Icon(Icons.tune_rounded), label: 'Settings'),
         ],
@@ -344,11 +357,30 @@ class _EvenHomeState extends State<EvenHome> {
       if (_loading) const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator(strokeWidth: 2)))
       else if (_groups.isEmpty) _emptyCard(icon: Icons.group_outlined, title: 'Your people, together', subtitle: 'Create a group for a trip, home or dinner.', action: 'Create your first group', onTap: _showAddGroup)
       else ..._groups.map(_groupTile),
-      const SizedBox(height: 27),
-      _sectionHeader('Recent activity', action: 'See all', onTap: () => setState(() => _tab = 1)),
-      const SizedBox(height: 12),
-      if (_expenses.isEmpty) _emptyCard(icon: Icons.receipt_long_outlined, title: 'Nothing to split yet', subtitle: 'Add an expense and EVEN will take care of the maths.', action: 'Add an expense', onTap: _showAddExpense)
-      else ..._expenses.take(5).map(_expenseTile),
+      const SizedBox(height: 22),
+      Material(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => setState(() => _tab = 2),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(children: [
+              Icon(Icons.receipt_long_rounded, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 12),
+              const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Transactions', style: TextStyle(fontWeight: FontWeight.w700)),
+                SizedBox(height: 3),
+                Text('Browse and manage every expense', style: TextStyle(fontSize: 12, color: Color(0xFF85877F))),
+              ])),
+              Text('${_expenses.length}', style: TextStyle(fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.primary)),
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_right_rounded),
+            ]),
+          ),
+        ),
+      ),
     ]),
   );
 
@@ -849,20 +881,20 @@ class _EvenHomeState extends State<EvenHome> {
         borderRadius: BorderRadius.circular(17),
         onTap: () => _showExpenseDetails(expense),
         child: Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
           child: Row(children: [
             Container(
-              width: 40, height: 40,
-              decoration: BoxDecoration(color: const Color(0xFFF0EEFF), borderRadius: BorderRadius.circular(13)),
-              child: const Icon(Icons.receipt_outlined, color: Color(0xFF8B80D6), size: 19),
+              width: 44, height: 44,
+              decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondaryContainer, borderRadius: BorderRadius.circular(14)),
+              child: Icon(_transactionIcon(expense.title), color: Theme.of(context).colorScheme.onSecondaryContainer, size: 21),
             ),
             const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(expense.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-              const SizedBox(height: 3),
+              Text(expense.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              const SizedBox(height: 4),
               Text('Paid by ${expense.paidBy} · ${DateFormat('d MMM · h:mm a').format(expense.createdAt)}',
-                style: const TextStyle(color: Color(0xFF8A8C84), fontSize: 10)),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11)),
             ])),
             Text(_format(expense.amountMinor), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
             const SizedBox(width: 4),
@@ -873,7 +905,34 @@ class _EvenHomeState extends State<EvenHome> {
     );
   }
 
-  Widget _activityPage() => ListView(padding: const EdgeInsets.all(22), children: [const SizedBox(height: 8), const Text('Activity', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.8)), const SizedBox(height: 6), const Text('Tap any transaction to see the full breakdown.', style: TextStyle(color: Color(0xFF85877F))), const SizedBox(height: 24), if (_expenses.isEmpty) _emptyCard(icon: Icons.receipt_long_outlined, title: 'Your activity starts here', subtitle: 'Expenses you add will appear here.', action: 'Add expense', onTap: _showAddExpense) else ..._expenses.map(_expenseTile)]);
+  Widget _groupsPage() => RefreshIndicator(
+    onRefresh: _refresh,
+    child: ListView(padding: const EdgeInsets.fromLTRB(22, 18, 22, 110), children: [
+      Text('Groups', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
+      const SizedBox(height: 6),
+      Text('Trips, homes and shared plans.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      const SizedBox(height: 20),
+      _sectionHeader('Your groups', action: 'New group', onTap: _showAddGroup),
+      const SizedBox(height: 12),
+      if (_groups.isEmpty)
+        _emptyCard(icon: Icons.group_outlined, title: 'Start with your people', subtitle: 'Create a group and add its members before recording expenses.', action: 'Create group', onTap: _showAddGroup)
+      else ..._groups.map(_groupTile),
+    ]),
+  );
+
+  Widget _activityPage() => RefreshIndicator(
+    onRefresh: _refresh,
+    child: ListView(padding: const EdgeInsets.fromLTRB(22, 18, 22, 110), children: [
+      Text('Transactions', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
+      const SizedBox(height: 6),
+      Text('Every expense, in one place. Tap one to edit or inspect its split.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      const SizedBox(height: 20),
+      if (_expenses.isEmpty)
+        _emptyCard(icon: Icons.receipt_long_outlined, title: 'No transactions yet', subtitle: 'Your expenses will appear here as you add them.', action: 'Add expense', onTap: _showPlacePicker)
+      else ..._expenses.map(_expenseTile),
+    ]),
+  );
+
   Widget _insightSummaryCards() {
     final now = DateTime.now();
     final month = _expenses.where((e) => e.createdAt.year == now.year && e.createdAt.month == now.month).toList();
@@ -993,12 +1052,19 @@ class _EvenHomeState extends State<EvenHome> {
       final sorted = balances.entries.toList()
         ..sort((a, b) => b.value.compareTo(a.value));
       final transfers = snapshot.hasData ? BalanceEngine.suggestedTransfers(balances) : <Transfer>[];
-      return ListView(padding: const EdgeInsets.all(22), children: [
-        const SizedBox(height: 8),
-        const Text('Balances', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.8)),
+      return ListView(padding: const EdgeInsets.fromLTRB(22, 18, 22, 100), children: [
+        Text('Insights', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
         const SizedBox(height: 6),
-        const Text('Who owes whom, without the mental arithmetic.', style: TextStyle(color: Color(0xFF85877F))),
+        Text('A clearer picture of spending and shared balances.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
         const SizedBox(height: 22),
+        _insightSummaryCards(),
+        const SizedBox(height: 18),
+        _insightTrends(),
+        const SizedBox(height: 24),
+        Text('People & balances', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+        const SizedBox(height: 6),
+        Text('Tap a person to see who owes them and the transactions behind it.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
+        const SizedBox(height: 14),
         if (snapshot.connectionState == ConnectionState.waiting)
           const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator(strokeWidth: 2)))
         else if (snapshot.hasError)
@@ -1006,22 +1072,35 @@ class _EvenHomeState extends State<EvenHome> {
         else if (balances.isEmpty)
           _emptyCard(icon: Icons.check_circle_outline, title: 'All settled up', subtitle: 'There are no outstanding balances in your ledger.', action: 'Back to home', onTap: () => setState(() => _tab = 0))
         else
-          ...sorted.map((entry) => Container(
-            margin: const EdgeInsets.only(bottom: 9), padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(18)),
-            child: Row(children: [
-              CircleAvatar(backgroundColor: const Color(0xFFECE9FC),
-                child: Text(entry.key.isEmpty ? '?' : entry.key[0].toUpperCase(),
-                  style: const TextStyle(color: Color(0xFF5B4BC4), fontWeight: FontWeight.w700))),
-              const SizedBox(width: 12),
-              Expanded(child: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.w600))),
-              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Text(_format(entry.value.abs()), style: TextStyle(fontWeight: FontWeight.w700,
-                  color: entry.value > 0 ? const Color(0xFF2E6B4E) : const Color(0xFF9B4A3C))),
-                Text(entry.value > 0 ? 'gets back' : 'owes',
-                  style: const TextStyle(color: Color(0xFF85877F), fontSize: 11)),
-              ]),
-            ]),
+          ...sorted.map((entry) => Material(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(18),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(18),
+              onTap: () => _showPersonBreakdown(entry.key, entry.value),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(16),
+                child: Row(children: [
+                  CircleAvatar(backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                    child: Text(entry.key.isEmpty ? '?' : entry.key.characters.first.toUpperCase(),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSecondaryContainer, fontWeight: FontWeight.w800))),
+                  const SizedBox(width: 12),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(entry.key, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                    Text(entry.value > 0 ? 'Is owed money' : 'Owes money',
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11)),
+                  ])),
+                  Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                    Text(_format(entry.value.abs()), style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15,
+                      color: entry.value > 0 ? const Color(0xFF2E8B65) : const Color(0xFFCF6A70))),
+                    Text('View details', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 11)),
+                  ]),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.chevron_right_rounded),
+                ]),
+              ),
+            ),
           )),
         if (transfers.isNotEmpty) ...[
           const SizedBox(height: 14),
@@ -1051,6 +1130,108 @@ class _EvenHomeState extends State<EvenHome> {
       ]);
     },
   );
+
+  Future<void> _showPersonBreakdown(String person, int netBalance) async {
+    final counterparties = <String, int>{};
+    final related = <({EvenExpense expense, int shareMinor})>[];
+    for (final expense in _expenses) {
+      final shares = await _repo.expenseShares(expense.id);
+      final ownShare = shares.where((row) => row['person_id'] == person)
+          .fold<int>(0, (sum, row) => sum + (row['amount_minor'] as int));
+      if (expense.paidBy == person) {
+        for (final row in shares) {
+          final other = row['person_id'] as String;
+          final amount = row['amount_minor'] as int;
+          if (other != person && amount > 0) counterparties[other] = (counterparties[other] ?? 0) + amount;
+        }
+        if (shares.any((row) => row['person_id'] != person)) related.add((expense: expense, shareMinor: expense.amountMinor));
+      } else if (ownShare > 0) {
+        counterparties[expense.paidBy] = (counterparties[expense.paidBy] ?? 0) - ownShare;
+        related.add((expense: expense, shareMinor: ownShare));
+      }
+    }
+    final settlements = await _repo.settlementHistory();
+    for (final row in settlements) {
+      final from = row['from_person'] as String;
+      final to = row['to_person'] as String;
+      final amount = row['amount_minor'] as int;
+      if (to == person && from != person) counterparties[from] = (counterparties[from] ?? 0) - amount;
+      if (from == person && to != person) counterparties[to] = (counterparties[to] ?? 0) + amount;
+    }
+    counterparties.removeWhere((_, value) => value == 0);
+    final sorted = counterparties.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    related.sort((a, b) => b.expense.createdAt.compareTo(a.expense.createdAt));
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context, isScrollControlled: true, useSafeArea: true, showDragHandle: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      builder: (ctx) {
+        final colors = Theme.of(ctx).colorScheme;
+        return DraggableScrollableSheet(
+          expand: false, initialChildSize: 0.82, minChildSize: 0.45, maxChildSize: 0.95,
+          builder: (ctx, controller) => ListView(
+            controller: controller, padding: const EdgeInsets.fromLTRB(20, 4, 20, 26),
+            children: [
+              Row(children: [
+                CircleAvatar(radius: 24, backgroundColor: colors.secondaryContainer,
+                  child: Text(person.characters.first.toUpperCase(), style: TextStyle(color: colors.onSecondaryContainer, fontWeight: FontWeight.w800))),
+                const SizedBox(width: 12),
+                Expanded(child: Text(person, style: Theme.of(ctx).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800))),
+              ]),
+              const SizedBox(height: 14),
+              Container(padding: const EdgeInsets.all(17),
+                decoration: BoxDecoration(color: colors.primary, borderRadius: BorderRadius.circular(20)),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(netBalance >= 0 ? 'NET AMOUNT TO RECEIVE' : 'NET AMOUNT TO PAY',
+                    style: TextStyle(color: colors.onPrimary.withValues(alpha: .78), fontSize: 10, letterSpacing: 1.1, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 5),
+                  Text(_format(netBalance.abs()), style: TextStyle(color: colors.onPrimary, fontSize: 28, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 3),
+                  Text('Across all recorded groups and personal transactions',
+                    style: TextStyle(color: colors.onPrimary.withValues(alpha: .8), fontSize: 11)),
+                ]),
+              ),
+              const SizedBox(height: 20),
+              Text('Who owes whom', style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 8),
+              if (sorted.isEmpty)
+                Text('No outstanding person-to-person balance.', style: TextStyle(color: colors.onSurfaceVariant))
+              else ...sorted.map((entry) => Container(
+                margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(13),
+                decoration: BoxDecoration(color: colors.surfaceContainerLow, borderRadius: BorderRadius.circular(15)),
+                child: Row(children: [
+                  Expanded(child: Text(entry.value > 0 ? '${entry.key} owes $person' : '$person owes ${entry.key}',
+                    style: const TextStyle(fontWeight: FontWeight.w600))),
+                  Text(_format(entry.value.abs()), style: const TextStyle(fontWeight: FontWeight.w800)),
+                ]),
+              )),
+              const SizedBox(height: 16),
+              Text('Related transactions', style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 8),
+              if (related.isEmpty)
+                Text('No related transactions found.', style: TextStyle(color: colors.onSurfaceVariant))
+              else ...related.map((item) => Material(
+                color: colors.surfaceContainerLow, borderRadius: BorderRadius.circular(15),
+                child: InkWell(borderRadius: BorderRadius.circular(15),
+                  onTap: () { Navigator.pop(ctx); _showExpenseDetails(item.expense); },
+                  child: Padding(padding: const EdgeInsets.all(13), child: Row(children: [
+                    Icon(_transactionIcon(item.expense.title), color: colors.primary),
+                    const SizedBox(width: 11),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(item.expense.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                      Text('Paid by ${item.expense.paidBy} · ${DateFormat('d MMM yyyy').format(item.expense.createdAt)}',
+                        style: TextStyle(color: colors.onSurfaceVariant, fontSize: 11)),
+                    ])),
+                    Text(_format(item.shareMinor), style: const TextStyle(fontWeight: FontWeight.w800)),
+                  ])),
+                ),
+              )),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   Future<void> _confirmSettlement(Transfer transfer) async {
     final confirmed = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
@@ -1339,10 +1520,6 @@ class _EvenHomeState extends State<EvenHome> {
                   ),
                 ),
                 const SizedBox(height: 22),
-         _insightSummaryCards(),
-         const SizedBox(height: 14),
-         _insightTrends(),
-
                 const Text(
                   'Add expense',
                   style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700),
