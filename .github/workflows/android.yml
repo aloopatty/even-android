@@ -90,7 +90,7 @@ jobs:
           version, distribution = match.groups()
           content = re.sub(
               r"^distributionUrl=.*$",
-              f"distributionUrl=https\\://services.gradle.org/distributions/gradle-{version}-{distribution}.zip",
+              f"distributionUrl=https\\://downloads.gradle.org/distributions/gradle-{version}-{distribution}.zip",
               content,
               flags=re.MULTILINE,
           )
