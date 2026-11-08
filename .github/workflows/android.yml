@@ -58,6 +58,11 @@ jobs:
 
           path = Path("android/app/src/main/AndroidManifest.xml")
           xml = path.read_text()
+          # Flutter's generated INTERNET permission can be limited to debug/profile
+          # manifests. Add it to the main manifest so the release APK can reach APIs.
+          internet_permission = '    <uses-permission android:name="android.permission.INTERNET" />'
+          if 'android.permission.INTERNET' not in xml:
+              xml = re.sub(r'(<manifest\\b[^>]*>)', r'\\1\\n' + internet_permission, xml, count=1)
           callback = """
                   <intent-filter android:autoVerify="false">
                       <action android:name="android.intent.action.VIEW" />
