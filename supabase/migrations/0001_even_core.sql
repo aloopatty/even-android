@@ -237,9 +237,9 @@ grant execute on function public.create_group(text,char(3),text) to authenticate
 grant execute on function public.create_group_expense(uuid,text,bigint,char(3),uuid,text,text,text,timestamptz,jsonb,uuid) to authenticated;
 grant execute on function public.update_group_expense(uuid,integer,text,bigint,char(3),uuid,text,text,text,timestamptz,jsonb) to authenticated;
 grant execute on function public.delete_group_expense(uuid,text) to authenticated;
-grant execute on function public.record_group_settlement(uuid,uuid,uuid,bigint,char(3),text,text,timestamptz) to authenticated;
+grant execute on function public.record_group_settlement(uuid,uuid,uuid,bigint,char(3),text,timestamptz) to authenticated;
 grant execute on function public.create_group_invite(uuid,text,timestamptz,integer) to authenticated;
 grant execute on function public.accept_group_invite(text) to authenticated;
 grant execute on function public.revoke_group_invite(uuid) to authenticated;
 revoke all on schema private from public,anon,authenticated;
-grant usage on schema private to authenticated;
+revoke execute on all functions in schema private from public,anon,authenticated;
