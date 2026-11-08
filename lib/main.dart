@@ -1255,7 +1255,7 @@ class _EvenHomeState extends State<EvenHome> {
   }
 
 
-  Future<List<String>?> _pickPeople(List<String> initial, {List<String> suggestions = const []}) async {
+  Future<List<String>?> _pickPeople(List<String> initial, {List<String> suggestions = const [], bool allowExcludeYou = false}) async {
     final selected = initial.toSet();
     final name = TextEditingController();
     final result = await showModalBottomSheet<List<String>>(
@@ -1560,15 +1560,13 @@ class _EvenHomeState extends State<EvenHome> {
                               child: Text(initials, style: TextStyle(color: isYou ? colors.onPrimary : colors.onSecondaryContainer, fontSize: 11, fontWeight: FontWeight.w800))),
                             const SizedBox(width: 8),
                             Text(person, style: TextStyle(color: colors.onSurface, fontWeight: FontWeight.w600, fontSize: 13)),
-                            [
-                              const SizedBox(width: 5),
-                              InkWell(customBorder: const CircleBorder(),
+                            const SizedBox(width: 5),
+                            InkWell(customBorder: const CircleBorder(),
                                 onTap: () => localSet(() {
                                   selectedPeople.remove(person);
                                   if (paidBy == person) paidBy = groupMembers.first;
                                 }),
                                 child: Padding(padding: const EdgeInsets.all(3), child: Icon(Icons.close_rounded, size: 16, color: colors.onSurfaceVariant))),
-                            ].first,
                           ]),
                         );
                       }).toList()),
