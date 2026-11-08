@@ -102,8 +102,7 @@ class EvenRepository {
     final cleanParticipants = participants.map((person) => person.trim()).toList();
     if (cleanTitle.isEmpty || amountMinor <= 0 || cleanPayer.isEmpty || cleanParticipants.isEmpty ||
         cleanParticipants.any((person) => person.isEmpty) ||
-        cleanParticipants.toSet().length != cleanParticipants.length ||
-        !cleanParticipants.contains(cleanPayer)) {
+        cleanParticipants.toSet().length != cleanParticipants.length) {
       throw ArgumentError('Enter a title, positive amount, a payer in the participant list and unique participants.');
     }
     final inputs = splitInputs ?? cleanParticipants.map((person) => SplitInput(personId: person)).toList();
