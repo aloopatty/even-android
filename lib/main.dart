@@ -559,7 +559,7 @@ class _EvenHomeState extends State<EvenHome> {
     if (people.isEmpty) people = ['You'];
     
     String payer = expense.paidBy;
-    if (!people.contains(payer)) people.insert(0, payer);
+    final payerChoices = {...people, payer}.toList();
     final shareByPerson = <String, int>{
       for (final row in existingShares) row['person_id'] as String: row['amount_minor'] as int,
     };
@@ -643,7 +643,7 @@ class _EvenHomeState extends State<EvenHome> {
                       avatar: CircleAvatar(backgroundColor: colors.secondaryContainer,
                         child: Text(person.characters.first.toUpperCase(), style: TextStyle(color: colors.onSecondaryContainer, fontSize: 11))),
                       label: Text(person),
-                      onDeleted: person == payer || people.length == 1 ? null : () => localSet(() {
+                      onDeleted: people.length == 1 ? null : () => localSet(() {
                         people.remove(person);
                         splitControllers.remove(person)?.dispose();
                         if (method == SplitMethod.exact) {
@@ -665,8 +665,7 @@ class _EvenHomeState extends State<EvenHome> {
                             splitControllers.remove(p)?.dispose();
                           }
                           people = chosen;
-                          if (!people.contains(payer)) payer = people.first;
-                        });
+                          });
                       },
                       icon: const Icon(Icons.person_add_alt_1_rounded), label: const Text('Manage people'),
                     ),
@@ -674,7 +673,7 @@ class _EvenHomeState extends State<EvenHome> {
                 ),
                 const SizedBox(height: 12),
                 _payerSelector(context: ctx, payer: payer, people: people, onTap: () async {
-                  final chosen = await _pickPayer(people, payer);
+                  final chosen = await _pickPayer(payerChoices, payer);
                   if (chosen != null) localSet(() => payer = chosen);
                 }),
                 const SizedBox(height: 12),
@@ -1564,7 +1563,6 @@ class _EvenHomeState extends State<EvenHome> {
                             InkWell(customBorder: const CircleBorder(),
                                 onTap: () => localSet(() {
                                   selectedPeople.remove(person);
-                                  if (paidBy == person) paidBy = groupMembers.first;
                                 }),
                                 child: Padding(padding: const EdgeInsets.all(3), child: Icon(Icons.close_rounded, size: 16, color: colors.onSurfaceVariant))),
                           ]),
