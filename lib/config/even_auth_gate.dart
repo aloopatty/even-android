@@ -85,7 +85,14 @@ class _EvenSignInPageState extends State<_EvenSignInPage> {
       setState(() => _notice = 'Supabase is reachable. The profiles endpoint responded successfully.');
     } on PostgrestException catch (e) {
       if (!mounted) return;
-      setState(() => _notice = 'Supabase is reachable (database HTTP ${e.code ?? 'response'}). Details: ${e.message}');
+      final unauthenticated = _client.auth.currentSession == null;
+      if (e.code == '42501' && unauthenticated) {
+        setState(() => _notice =
+            'Cloud server is reachable. Profile access is correctly restricted until you sign in.');
+      } else {
+        setState(() => _notice =
+            'Cloud server responded, but profile access failed (HTTP ${e.code ?? 'response'}): ${e.message}');
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = 'Supabase connection failed: ${e.runtimeType}: $e');
