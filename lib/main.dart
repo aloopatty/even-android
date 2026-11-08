@@ -1949,14 +1949,43 @@ class _PlacePageState extends State<_PlacePage> {
             Text('No expenses here yet', style: TextStyle(fontWeight: FontWeight.w700)),
             Text('Add your first expense using the button below.', textAlign: TextAlign.center),
           ]))
-        else ..._expenses.map((e) => Card(child: ListTile(
-          onTap: () => _openExpense(e),
-          leading: CircleAvatar(backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-            child: Icon(Icons.receipt_long_rounded, color: Theme.of(context).colorScheme.onSecondaryContainer)),
-          title: Text(e.title, style: const TextStyle(fontWeight: FontWeight.w700)),
-          subtitle: Text('Paid by ${e.paidBy} · ${DateFormat('d MMM · h:mm a').format(e.createdAt)}'),
-          trailing: Text(widget.format(e.amountMinor), style: const TextStyle(fontWeight: FontWeight.w800)),
-        ))),
+        else ..._expenses.map((e) => Card(
+          margin: const EdgeInsets.only(bottom: 11),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () => _openExpense(e),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              child: Row(children: [
+                Container(
+                  width: 44, height: 44,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(_transactionIcon(e.title),
+                    color: Theme.of(context).colorScheme.onSecondaryContainer, size: 21),
+                ),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(e.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                  const SizedBox(height: 4),
+                  Text('Paid by ${e.paidBy}',
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11)),
+                  const SizedBox(height: 2),
+                  Text(DateFormat('d MMM yyyy · h:mm a').format(e.createdAt),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 10)),
+                ])),
+                const SizedBox(width: 8),
+                Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  Text(widget.format(e.amountMinor), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                  const SizedBox(height: 4),
+                  Icon(Icons.chevron_right_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 19),
+                ]),
+              ]),
+            ),
+          ),
+        )),
       ]),
     ),
   );
