@@ -1,4 +1,3 @@
-
 name: Build EVEN Android APK
 
 on:
@@ -16,10 +15,25 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Verify cloud configuration
+        shell: bash
+        run: |
+          if [[ -z "$SUPABASE_URL" || -z "$SUPABASE_PUBLISHABLE_KEY" ]]; then
+            echo "::error::Missing GitHub Actions secrets SUPABASE_URL and/or SUPABASE_PUBLISHABLE_KEY. Refusing to build an APK that silently falls back to local-only mode."
+            exit 1
+          fi
+          if [[ "$SUPABASE_URL" != https://*.supabase.co ]]; then
+            echo "::error::SUPABASE_URL must be the project's HTTPS Supabase URL."
+            exit 1
+          fi
 
       - name: Install Flutter
         uses: subosito/flutter-action@v2
@@ -36,7 +50,24 @@ jobs:
           cp tool/android/ic_launcher_foreground.xml android/app/src/main/res/drawable/ic_launcher_foreground.xml
           cp tool/android/ic_launcher.xml android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
           cp tool/android/ic_launcher_background.xml android/app/src/main/res/values/ic_launcher_background.xml
-          sed -i 's/android:icon="@mipmap\/ic_launcher"/android:icon="@mipmap\/ic_launcher"/' android/app/src/main/AndroidManifest.xml
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("android/app/src/main/AndroidManifest.xml")
+          xml = path.read_text()
+          callback = """
+                  <intent-filter android:autoVerify="false">
+                      <action android:name="android.intent.action.VIEW" />
+                      <category android:name="android.intent.category.DEFAULT" />
+                      <category android:name="android.intent.category.BROWSABLE" />
+                      <data android:scheme="even" android:host="login-callback" />
+                  </intent-filter>
+          """
+          marker = "            </activity>"
+          if marker not in xml:
+              raise SystemExit("Could not locate Flutter MainActivity in AndroidManifest.xml")
+          xml = xml.replace(marker, callback + "\n" + marker, 1)
+          path.write_text(xml)
+          PY
 
       - name: Install dependencies
         run: flutter pub get
@@ -47,8 +78,11 @@ jobs:
       - name: Run tests
         run: flutter test
 
-      - name: Build APK
-        run: flutter build apk --release
+      - name: Build configured release APK
+        run: |
+          flutter build apk --release \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
