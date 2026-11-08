@@ -559,7 +559,6 @@ class _EvenHomeState extends State<EvenHome> {
     if (people.isEmpty) people = ['You'];
     
     String payer = expense.paidBy;
-    final payerChoices = {...people, payer}.toList();
     final shareByPerson = <String, int>{
       for (final row in existingShares) row['person_id'] as String: row['amount_minor'] as int,
     };
@@ -673,7 +672,7 @@ class _EvenHomeState extends State<EvenHome> {
                 ),
                 const SizedBox(height: 12),
                 _payerSelector(context: ctx, payer: payer, people: people, onTap: () async {
-                  final chosen = await _pickPayer(payerChoices, payer);
+                  final chosen = await _pickPayer({...people, payer}.toList(), payer);
                   if (chosen != null) localSet(() => payer = chosen);
                 }),
                 const SizedBox(height: 12),
