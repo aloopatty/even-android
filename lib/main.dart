@@ -898,37 +898,56 @@ class _EvenHomeState extends State<EvenHome> {
 
   Widget _insightSummaryCards() {
     final now = DateTime.now();
-    final month = _expenses.where((e) => e.createdAt.year == now.year && e.createdAt.month == now.month).toList();
-    final prev = DateTime(now.year, now.month - 1);
-    final lastMonth = _expenses.where((e) => e.createdAt.year == prev.year && e.createdAt.month == prev.month).toList();
-    final total = month.fold<int>(0, (sum, e) => sum + e.amountMinor);
-    final lastTotal = lastMonth.fold<int>(0, (sum, e) => sum + e.amountMinor);
-    final average = month.isEmpty ? 0 : total ~/ month.length;
-    final ranked = [..._expenses]..sort((a, b) => b.amountMinor.compareTo(a.amountMinor));
-    final change = lastTotal == 0 ? null : ((total - lastTotal) / lastTotal * 100).round();
+    final month = _expenses.where((e) =>
+      e.createdAt.year == now.year && e.createdAt.month == now.month).toList();
+    final total = month.fold<int>(0, (sum, expense) => sum + expense.amountMinor);
     final colors = Theme.of(context).colorScheme;
-    Widget metric(String title, String value, String detail, IconData icon) => Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.45))),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(icon, color: colors.primary, size: 19), const SizedBox(height: 9),
-        Text(value, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-        const SizedBox(height: 3), Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-        Text(detail, style: TextStyle(color: colors.onSurfaceVariant, fontSize: 10)),
-      ]),
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 17),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: colors.secondaryContainer,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(Icons.calendar_month_rounded,
+              color: colors.onSecondaryContainer, size: 21),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("${DateFormat('MMMM').format(now)} spending",
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  )),
+                const SizedBox(height: 3),
+                Text(_format(total),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  )),
+                const SizedBox(height: 2),
+                Text('${month.length} ${month.length == 1 ? 'transaction' : 'transactions'} this month',
+                  style: TextStyle(color: colors.onSurfaceVariant, fontSize: 11)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(DateFormat('MMMM spending').format(now), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-      const SizedBox(height: 10),
-      GridView.count(shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), crossAxisCount: 2,
-        mainAxisSpacing: 9, crossAxisSpacing: 9, childAspectRatio: 1.5, children: [
-          metric('This month', _format(total), change == null ? '${month.length} transactions' : '${change.abs()}% ${change >= 0 ? 'higher' : 'lower'} vs last month', Icons.calendar_month_rounded),
-          metric('Average expense', _format(average), 'Per transaction this month', Icons.functions_rounded),
-          metric('Largest expense', ranked.isEmpty ? '—' : _format(ranked.first.amountMinor), ranked.isEmpty ? 'No transactions yet' : ranked.first.title, Icons.trending_up_rounded),
-          metric('All-time entries', '${_expenses.length}', 'Across all your groups', Icons.receipt_long_rounded),
-        ]),
-    ]);
   }
 
   Widget _insightTrends() {
@@ -1022,7 +1041,6 @@ class _EvenHomeState extends State<EvenHome> {
         const SizedBox(height: 22),
         _insightSummaryCards(),
         const SizedBox(height: 18),
-        _insightTrends(),
         const SizedBox(height: 24),
         Text('People & balances', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
         const SizedBox(height: 6),
@@ -1082,14 +1100,6 @@ class _EvenHomeState extends State<EvenHome> {
           )),
         ],
         const SizedBox(height: 14),
-        Container(padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(color: const Color(0xFFECE9FC), borderRadius: BorderRadius.circular(18)),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('All-time spending', style: TextStyle(color: Color(0xFF8B80D6), fontSize: 12)),
-            const SizedBox(height: 6),
-            Text(_format(_spent), style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w700, color: Color(0xFF7568D8))),
-            Text('${_expenses.length} expenses recorded', style: const TextStyle(color: Color(0xFF8B80D6), fontSize: 12)),
-          ])),
       ]);
     },
   );
