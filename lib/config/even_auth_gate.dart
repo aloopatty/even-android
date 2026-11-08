@@ -75,6 +75,24 @@ class _EvenSignInPageState extends State<_EvenSignInPage> {
     super.dispose();
   }
 
+  /// Distinguishes network/DNS failures from Auth/provider configuration failures.
+  /// A database permission response still proves the Supabase API is reachable.
+  Future<void> _checkConnection() async {
+    setState(() { _busy = true; _error = null; _notice = null; });
+    try {
+      await _client.from('profiles').select('id').limit(1);
+      if (!mounted) return;
+      setState(() => _notice = 'Supabase is reachable. The profiles endpoint responded successfully.');
+    } on PostgrestException catch (e) {
+      if (!mounted) return;
+      setState(() => _notice = 'Supabase is reachable (database HTTP ${e.code ?? 'response'}). Details: ${e.message}');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = 'Supabase connection failed: ${e.runtimeType}: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
   Future<void> _sendCode() async {
     final email = _email.text.trim();
     if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) {
@@ -170,6 +188,12 @@ class _EvenSignInPageState extends State<_EvenSignInPage> {
                   Text('Sign in to keep your groups, expenses and balances in sync.',
                     style: TextStyle(color: colors.onSurfaceVariant, height: 1.45)),
                   const SizedBox(height: 28),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : _checkConnection,
+                    icon: const Icon(Icons.cloud_done_outlined),
+                    label: const Text('Check cloud connection'),
+                  ),
+                  const SizedBox(height: 10),
                   OutlinedButton.icon(
                     onPressed: _busy ? null : _google,
                     icon: const Icon(Icons.g_mobiledata_rounded, size: 27),
