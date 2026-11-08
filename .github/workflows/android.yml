@@ -88,9 +88,12 @@ jobs:
           if not match:
               raise SystemExit("Could not identify the generated Gradle distribution")
           version, distribution = match.groups()
+          # Use the Aliyun Gradle mirror: the official host redirects to
+          # GitHub Releases, which has repeatedly returned HTTP 504 in Actions.
+          # The binary-only distribution is smaller than the all-in-one archive.
           content = re.sub(
               r"^distributionUrl=.*$",
-              f"distributionUrl=https\\://downloads.gradle.org/distributions/gradle-{version}-{distribution}.zip",
+              f"distributionUrl=https\\://mirrors.aliyun.com/gradle/distributions/v{version}/gradle-{version}-bin.zip",
               content,
               flags=re.MULTILINE,
           )
