@@ -11,7 +11,7 @@ major_version = 15
 [auth]
 enabled = true
 site_url = "https://even.app"
-additional_redirect_urls = ["even://auth-callback", "https://even.app/auth/callback"]
+additional_redirect_urls = ["even://login-callback", "even://auth-callback", "https://even.app/auth/callback"]
 jwt_expiry = 3600
 enable_signup = true
 
