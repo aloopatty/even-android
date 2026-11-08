@@ -32,6 +32,25 @@ class _EvenAuthGateState extends State<EvenAuthGate> {
   }
 }
 
+String _friendlyAuthError(Object error) {
+  final message = error.toString();
+  if (message.contains('Failed host lookup') ||
+      message.contains('SocketException') ||
+      message.contains('No address associated with hostname')) {
+    return 'EVEN cannot reach its cloud server. Check your internet connection. '
+        'If other apps work, the Supabase project URL in the Android build may be incorrect.';
+  }
+  if (message.contains('Invalid login credentials')) {
+    return 'That verification code is invalid or expired. Request a new code and try again.';
+  }
+  if (message.contains('redirect') || message.contains('Redirect')) {
+    return 'Google sign-in returned to EVEN, but the callback URL is not allowed. '
+        'Add even://login-callback to Supabase Auth → URL Configuration → Redirect URLs.';
+  }
+  if (error is AuthException) return error.message;
+  return 'Something went wrong while signing in. Please try again.';
+}
+
 class _EvenSignInPage extends StatefulWidget {
   const _EvenSignInPage();
 
@@ -58,7 +77,7 @@ class _EvenSignInPageState extends State<_EvenSignInPage> {
 
   Future<void> _sendCode() async {
     final email = _email.text.trim();
-    if (!email.contains('@') || email.endsWith('@')) {
+    if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) {
       setState(() => _error = 'Enter a valid email address.');
       return;
     }
@@ -71,12 +90,10 @@ class _EvenSignInPageState extends State<_EvenSignInPage> {
       if (!mounted) return;
       setState(() {
         _codeSent = true;
-        _notice = 'A verification code has been sent to $email.';
+        _notice = 'A verification code has been requested for $email. Check your inbox and spam folder.';
       });
-    } on AuthException catch (e) {
-      if (mounted) setState(() => _error = e.message);
-    } catch (_) {
-      if (mounted) setState(() => _error = 'Could not send the code. Check your connection and try again.');
+    } catch (e) {
+      if (mounted) setState(() => _error = _friendlyAuthError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -96,10 +113,8 @@ class _EvenSignInPageState extends State<_EvenSignInPage> {
         token: token,
         type: OtpType.email,
       );
-    } on AuthException catch (e) {
-      if (mounted) setState(() => _error = e.message);
-    } catch (_) {
-      if (mounted) setState(() => _error = 'Verification failed. Please try again.');
+    } catch (e) {
+      if (mounted) setState(() => _error = _friendlyAuthError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -112,10 +127,8 @@ class _EvenSignInPageState extends State<_EvenSignInPage> {
         OAuthProvider.google,
         redirectTo: 'even://login-callback',
       );
-    } on AuthException catch (e) {
-      if (mounted) setState(() => _error = e.message);
-    } catch (_) {
-      if (mounted) setState(() => _error = 'Google sign-in could not start.');
+    } catch (e) {
+      if (mounted) setState(() => _error = _friendlyAuthError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
