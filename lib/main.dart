@@ -1144,7 +1144,9 @@ class _EvenHomeState extends State<EvenHome> {
           final amount = row['amount_minor'] as int;
           if (other != person && amount > 0) counterparties[other] = (counterparties[other] ?? 0) + amount;
         }
-        if (shares.any((row) => row['person_id'] != person)) related.add((expense: expense, shareMinor: expense.amountMinor));
+        final owedByOthers = shares.where((row) => row['person_id'] != person)
+            .fold<int>(0, (sum, row) => sum + (row['amount_minor'] as int));
+        if (owedByOthers > 0) related.add((expense: expense, shareMinor: owedByOthers));
       } else if (ownShare > 0) {
         counterparties[expense.paidBy] = (counterparties[expense.paidBy] ?? 0) - ownShare;
         related.add((expense: expense, shareMinor: ownShare));
