@@ -23,15 +23,15 @@ IconData _transactionIcon(String title) {
 }
 
 class EvenPalette {
-  static const Color brand = Color(0xFF5B4BC4);
+  static const Color brand = Color(0xFF7568D8);
   static const Color lightBackground = Color(0xFFF7F6FC);
   static const Color lightSurface = Color(0xFFFCFBFF);
   static const Color lightField = Color(0xFFF0EEFA);
-  static const Color darkBackground = Color(0xFF12101A);
-  static const Color darkSurface = Color(0xFF1B1926);
-  static const Color darkField = Color(0xFF272333);
-  static const Color darkSnackbar = Color(0xFF342F48);
-  static const Color darkSnackbarAccent = Color(0xFF332B61);
+  static const Color darkBackground = Color(0xFF211D30);
+  static const Color darkSurface = Color(0xFF2B2640);
+  static const Color darkField = Color(0xFF37314F);
+  static const Color darkSnackbar = Color(0xFF40395B);
+  static const Color darkSnackbarAccent = Color(0xFF49416B);
 }
 
 void main() async {
@@ -92,18 +92,18 @@ class _EvenAppState extends State<EvenApp> {
       ).copyWith(
         primary: brand,
         onPrimary: Colors.white,
-        primaryContainer: dark ? const Color(0xFF332B61) : const Color(0xFFECE9FC),
-        onPrimaryContainer: dark ? const Color(0xFFEAE5FF) : const Color(0xFF30236F),
+        primaryContainer: dark ? const Color(0xFF514879) : const Color(0xFFECE9FC),
+        onPrimaryContainer: dark ? const Color(0xFFF0EDFF) : const Color(0xFF30236F),
         secondary: dark ? const Color(0xFFB9AEFF) : brand,
-        secondaryContainer: dark ? const Color(0xFF302B42) : const Color(0xFFECE9FC),
+        secondaryContainer: dark ? const Color(0xFF46405F) : const Color(0xFFECE9FC),
         onSecondaryContainer: dark ? const Color(0xFFE4DFFF) : const Color(0xFF30236F),
         surface: dark ? EvenPalette.darkSurface : EvenPalette.lightSurface,
         onSurface: dark ? const Color(0xFFF2EFFA) : const Color(0xFF191622),
-        surfaceContainerLowest: dark ? const Color(0xFF100E17) : Colors.white,
-        surfaceContainerLow: dark ? const Color(0xFF211E2D) : const Color(0xFFF3F1FA),
-        surfaceContainer: dark ? const Color(0xFF272333) : const Color(0xFFF0EEFA),
-        surfaceContainerHigh: dark ? const Color(0xFF2C2839) : const Color(0xFFECEAF4),
-        surfaceContainerHighest: dark ? const Color(0xFF353044) : const Color(0xFFE7E4F0),
+        surfaceContainerLowest: dark ? const Color(0xFF1C1929) : Colors.white,
+        surfaceContainerLow: dark ? const Color(0xFF302B45) : const Color(0xFFF3F1FA),
+        surfaceContainer: dark ? const Color(0xFF37314F) : const Color(0xFFF0EEFA),
+        surfaceContainerHigh: dark ? const Color(0xFF403A59) : const Color(0xFFECEAF4),
+        surfaceContainerHighest: dark ? const Color(0xFF4A4464) : const Color(0xFFE7E4F0),
         onSurfaceVariant: dark ? const Color(0xFFBDB7CC) : const Color(0xFF6F6A7D),
         outline: dark ? const Color(0xFF777086) : const Color(0xFF8F899E),
         outlineVariant: dark ? const Color(0xFF494356) : const Color(0xFFE3E0EC),
@@ -326,21 +326,14 @@ class _EvenHomeState extends State<EvenHome> {
           ),
         ),
       ]),
-      const SizedBox(height: 26),
-      Material(color: Theme.of(context).colorScheme.primary, borderRadius: BorderRadius.circular(26), child: InkWell(borderRadius: BorderRadius.circular(26), onTap: _showTotalExpenses, child: Container(padding: const EdgeInsets.all(22), decoration: BoxDecoration(borderRadius: BorderRadius.circular(26)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('TOTAL EXPENSES', style: TextStyle(color: Color(0xFFC9C3F0), fontSize: 11, letterSpacing: 1.5, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 10),
-        Text(_format(_spent), style: TextStyle(color: Theme.of(context).colorScheme.onPrimary, fontSize: 34, fontWeight: FontWeight.w700, letterSpacing: -1.2)),
-        const SizedBox(height: 17),
-        const Divider(color: Color(0xFF8B80D6), height: 1),
-        const SizedBox(height: 14),
-        Row(children: [
-          const Icon(Icons.shield_outlined, color: Color(0xFFC9C3F0), size: 16), const SizedBox(width: 8),
-          const Expanded(child: Text('Your shared spending, in one place', style: TextStyle(color: Color(0xFFE8E5FA), fontSize: 12))),
-          Text('${_expenses.length} entries', style: const TextStyle(color: Color(0xFFE8E5FA), fontSize: 12, fontWeight: FontWeight.w600)),
-        ]),
-      ])))),
-      const SizedBox(height: 28),
+      const SizedBox(height: 22),
+      const SizedBox(height: 9),
+      _sectionHeader('Your groups', action: 'New group', onTap: _showAddGroup),
+      const SizedBox(height: 13),
+      if (_loading) const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator(strokeWidth: 2)))
+      else if (_groups.isEmpty) _emptyCard(icon: Icons.group_outlined, title: 'Your people, together', subtitle: 'Create a group for a trip, home or dinner.', action: 'Create your first group', onTap: _showAddGroup)
+      else ..._groups.map(_groupTile),
+      const SizedBox(height: 16),
       Material(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(19), child: InkWell(
         borderRadius: BorderRadius.circular(19), onTap: _openPersonal,
         child: Padding(padding: const EdgeInsets.all(15), child: Row(children: [
@@ -351,36 +344,8 @@ class _EvenHomeState extends State<EvenHome> {
             SizedBox(height: 3), Text('Your own expenses', style: TextStyle(color: Color(0xFF85877F), fontSize: 11)),
           ])), const Icon(Icons.chevron_right_rounded, color: Color(0xFF9A9D95)),
         ])))),
-      const SizedBox(height: 9),
-      _sectionHeader('Your groups', action: 'New group', onTap: _showAddGroup),
-      const SizedBox(height: 13),
-      if (_loading) const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator(strokeWidth: 2)))
-      else if (_groups.isEmpty) _emptyCard(icon: Icons.group_outlined, title: 'Your people, together', subtitle: 'Create a group for a trip, home or dinner.', action: 'Create your first group', onTap: _showAddGroup)
-      else ..._groups.map(_groupTile),
       const SizedBox(height: 22),
-      Material(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: () => setState(() => _tab = 2),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(children: [
-              Icon(Icons.receipt_long_rounded, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(width: 12),
-              const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Transactions', style: TextStyle(fontWeight: FontWeight.w700)),
-                SizedBox(height: 3),
-                Text('Browse and manage every expense', style: TextStyle(fontSize: 12, color: Color(0xFF85877F))),
-              ])),
-              Text('${_expenses.length}', style: TextStyle(fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.primary)),
-              const SizedBox(width: 4),
-              const Icon(Icons.chevron_right_rounded),
-            ]),
-          ),
-        ),
-      ),
+
     ]),
   );
 
@@ -1491,7 +1456,10 @@ class _EvenHomeState extends State<EvenHome> {
     String paidBy = 'You';
     String? groupId = initialGroupId;
     DateTime selectedDateTime = DateTime.now();
-    if (initialGroupId != null) { final group = _groups.firstWhere((g) => g.id == initialGroupId); selectedPeople = [...group.members]; if (!selectedPeople.contains('You')) selectedPeople.insert(0, 'You'); }
+    final groupMembers = initialGroupId == null
+        ? <String>['You']
+        : [..._groups.firstWhere((g) => g.id == initialGroupId).members];
+    if (initialGroupId != null) selectedPeople = [...groupMembers];
     SplitMethod splitMethod = SplitMethod.equal;
     List<SplitInput>? preparedInputs;
     final result = await showModalBottomSheet<bool>(
@@ -1522,10 +1490,23 @@ class _EvenHomeState extends State<EvenHome> {
                   ),
                 ),
                 const SizedBox(height: 22),
-                const Text(
-                  'Add expense',
-                  style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700),
-                ),
+                Row(children: [
+                  const Expanded(child: Text('Add expense', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700))),
+                  IconButton.filledTonal(
+                    tooltip: 'Choose date and time',
+                    onPressed: () async {
+                      final pickedDate = await showDatePicker(context: ctx, initialDate: selectedDateTime,
+                        firstDate: DateTime(2000), lastDate: DateTime(2100));
+                      if (pickedDate == null || !ctx.mounted) return;
+                      final date = DateTime(pickedDate.year, pickedDate.month, pickedDate.day,
+                        selectedDateTime.hour, selectedDateTime.minute);
+                      final pickedTime = await showTimePicker(context: ctx, initialTime: TimeOfDay.fromDateTime(date));
+                      localSet(() => selectedDateTime = pickedTime == null ? date :
+                        DateTime(date.year, date.month, date.day, pickedTime.hour, pickedTime.minute));
+                    },
+                    icon: const Icon(Icons.calendar_month_rounded),
+                  ),
+                ]),
                 const SizedBox(height: 18),
                 TextField(
                   controller: title,
@@ -1548,41 +1529,6 @@ class _EvenHomeState extends State<EvenHome> {
                     prefixText: '₹  ',
                   ),
                 ),
-                const SizedBox(height: 12),
-                const SizedBox(height: 12),
-                Builder(builder: (dateContext) {
-                  final colors = Theme.of(dateContext).colorScheme;
-                  return Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(color: colors.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.55))),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('Date and time', style: Theme.of(dateContext).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 9),
-                      Row(children: [
-                        Expanded(child: OutlinedButton.icon(
-                          onPressed: () async {
-                            final picked = await showDatePicker(context: dateContext, initialDate: selectedDateTime,
-                              firstDate: DateTime(2000), lastDate: DateTime(2100));
-                            if (picked != null) localSet(() => selectedDateTime = DateTime(picked.year, picked.month, picked.day, selectedDateTime.hour, selectedDateTime.minute));
-                          },
-                          icon: const Icon(Icons.calendar_today_outlined, size: 17),
-                          label: Text(DateFormat('d MMM yyyy').format(selectedDateTime)),
-                        )),
-                        const SizedBox(width: 8),
-                        Expanded(child: OutlinedButton.icon(
-                          onPressed: () async {
-                            final picked = await showTimePicker(context: dateContext, initialTime: TimeOfDay.fromDateTime(selectedDateTime));
-                            if (picked != null) localSet(() => selectedDateTime = DateTime(selectedDateTime.year, selectedDateTime.month, selectedDateTime.day, picked.hour, picked.minute));
-                          },
-                          icon: const Icon(Icons.schedule_rounded, size: 17),
-                          label: Text(DateFormat('h:mm a').format(selectedDateTime)),
-                        )),
-                      ]),
-                    ]),
-                  );
-                }),
                 const SizedBox(height: 12),
                 Builder(builder: (themeContext) {
                   final colors = Theme.of(themeContext).colorScheme;
@@ -1613,12 +1559,12 @@ class _EvenHomeState extends State<EvenHome> {
                               child: Text(initials, style: TextStyle(color: isYou ? colors.onPrimary : colors.onSecondaryContainer, fontSize: 11, fontWeight: FontWeight.w800))),
                             const SizedBox(width: 8),
                             Text(person, style: TextStyle(color: colors.onSurface, fontWeight: FontWeight.w600, fontSize: 13)),
-                            if (!isYou) ...[
+                            ...[
                               const SizedBox(width: 5),
                               InkWell(customBorder: const CircleBorder(),
                                 onTap: () => localSet(() {
                                   selectedPeople.remove(person);
-                                  if (paidBy == person) paidBy = selectedPeople.first;
+                                  if (paidBy == person) paidBy = groupMembers.first;
                                 }),
                                 child: Padding(padding: const EdgeInsets.all(3), child: Icon(Icons.close_rounded, size: 16, color: colors.onSurfaceVariant))),
                             ],
@@ -1649,7 +1595,7 @@ class _EvenHomeState extends State<EvenHome> {
                   payer: paidBy,
                   people: selectedPeople,
                   onTap: () async {
-                    final chosen = await _pickPayer(selectedPeople, paidBy);
+                    final chosen = await _pickPayer(groupMembers, paidBy);
                     if (chosen != null) localSet(() => paidBy = chosen);
                   },
                 ),
@@ -1698,9 +1644,6 @@ class _EvenHomeState extends State<EvenHome> {
                     onPressed: () {
                       final amountMinor = parseRupeesToPaise(amount.text);
                       final participantIds = [...selectedPeople];
-                      if (!participantIds.contains('You')) {
-                        participantIds.insert(0, 'You');
-                      }
                       if (title.text.trim().isEmpty ||
                           amountMinor == null ||
                           amountMinor <= 0 ||
@@ -1763,10 +1706,6 @@ class _EvenHomeState extends State<EvenHome> {
 
   if (amountMinor != null && amountMinor > 0) {
     final participants = [...selectedPeople];
-
-    if (!participants.contains('You')) {
-      participants.insert(0, 'You');
-    }
 
     await _repo.addExpense(
       title: title.text.trim(),
