@@ -1260,7 +1260,7 @@ class _EvenHomeState extends State<EvenHome> {
     _settingTile(Icons.palette_outlined, 'Appearance', switch (widget.themeMode) { ThemeMode.light => 'Light', ThemeMode.dark => 'Dark', ThemeMode.system => 'System default' }, _chooseAppearance),
     _settingTile(Icons.lock_outline_rounded, 'Privacy & security', 'Local data on this device', () => _showSettingInfo('Privacy & security', 'Your expenses are stored locally on this device. Cloud accounts and biometric app lock are not configured in this build.')),
     _settingTile(Icons.cloud_outlined, 'Cloud sync', 'Not connected', () => _showSettingInfo('Cloud sync', 'Cloud sync needs a configured backend, account sign-in and security rules. It is not active, and your data is not being uploaded.')),
-    _settingTile(Icons.info_outline_rounded, 'About EVEN', 'Version 1.0.0 · Built for clarity', () => showAboutDialog(context: context, applicationName: 'EVEN', applicationVersion: '1.0.0', applicationLegalese: 'Split expenses. Settle simply.')),
+    _settingTile(Icons.info_outline_rounded, 'About EVEN', 'Version 2.0.0 · Built for clarity', () => showAboutDialog(context: context, applicationName: 'EVEN', applicationVersion: '2.0.0', applicationLegalese: 'Split expenses. Settle simply.')),
   ]);
 
   Widget _settingTile(IconData icon, String title, String subtitle, VoidCallback onTap) => Material(
