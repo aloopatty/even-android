@@ -66,8 +66,8 @@ jobs:
                       <data android:scheme="even" android:host="login-callback" />
                   </intent-filter>
           """
-          if "android:host=" + chr(34) + "login-callback" + chr(34) not in xml:
-              updated, count = re.subn(r"</activity>", callback + "\\n            </activity>", xml, count=1)
+          if 'android:host="login-callback"' not in xml:
+              updated, count = re.subn(r"</activity>", callback + chr(10) + "            </activity>", xml, count=1)
               if count != 1:
                   raise SystemExit("Could not find the Flutter activity closing tag in AndroidManifest.xml")
               path.write_text(updated)
