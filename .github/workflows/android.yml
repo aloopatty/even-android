@@ -73,6 +73,18 @@ jobs:
               path.write_text(updated)
           PY
 
+      - name: Configure Gradle wrapper and cache
+        shell: bash
+        run: |
+          WRAPPER="android/gradle/wrapper/gradle-wrapper.properties"
+          if [[ -f "$WRAPPER" ]]; then
+            sed -i -E 's#https://github.com/gradle/gradle-distributions/releases/download/v([0-9.]+)/gradle-([0-9.]+)-all.zip#https://services.gradle.org/distributions/gradle-\2-all.zip#' "$WRAPPER"
+            grep distributionUrl "$WRAPPER"
+          fi
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Install dependencies
         run: flutter pub get
 
