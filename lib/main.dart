@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'config/even_supabase_config.dart';
 import 'data/even_database.dart';
 import 'data/even_repository.dart';
 import 'domain/models.dart';
@@ -37,6 +38,7 @@ class EvenPalette {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  await EvenSupabaseConfig.initialize();
   final preferences = await SharedPreferences.getInstance();
   runApp(EvenApp(preferences: preferences));
 }
