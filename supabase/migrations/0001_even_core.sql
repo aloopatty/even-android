@@ -242,4 +242,7 @@ grant execute on function public.create_group_invite(uuid,text,timestamptz,integ
 grant execute on function public.accept_group_invite(text) to authenticated;
 grant execute on function public.revoke_group_invite(uuid) to authenticated;
 revoke all on schema private from public,anon,authenticated;
+grant usage on schema private to authenticated;
 revoke execute on all functions in schema private from public,anon,authenticated;
+grant execute on function private.is_group_member(uuid,uuid) to authenticated;
+grant execute on function private.is_group_owner(uuid,uuid) to authenticated;
