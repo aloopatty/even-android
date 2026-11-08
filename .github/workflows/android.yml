@@ -76,11 +76,27 @@ jobs:
       - name: Configure Gradle wrapper and cache
         shell: bash
         run: |
-          WRAPPER="android/gradle/wrapper/gradle-wrapper.properties"
-          if [[ -f "$WRAPPER" ]]; then
-            sed -i -E 's#https://github.com/gradle/gradle-distributions/releases/download/v([0-9.]+)/gradle-([0-9.]+)-all.zip#https://services.gradle.org/distributions/gradle-\2-all.zip#' "$WRAPPER"
-            grep distributionUrl "$WRAPPER"
-          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          wrapper = Path("android/gradle/wrapper/gradle-wrapper.properties")
+          if not wrapper.exists():
+              raise SystemExit("Gradle wrapper properties were not generated")
+          content = wrapper.read_text()
+          match = re.search(r"gradle-([0-9.]+)-(all|bin)\\.zip", content)
+          if not match:
+              raise SystemExit("Could not identify the generated Gradle distribution")
+          version, distribution = match.groups()
+          content = re.sub(
+              r"^distributionUrl=.*$",
+              f"distributionUrl=https\\\\://services.gradle.org/distributions/gradle-{version}-{distribution}.zip",
+              content,
+              flags=re.MULTILINE,
+          )
+          wrapper.write_text(content)
+          print(next(line for line in content.splitlines() if line.startswith("distributionUrl=")))
+          PY
 
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
