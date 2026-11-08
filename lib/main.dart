@@ -557,7 +557,7 @@ class _EvenHomeState extends State<EvenHome> {
     final splitControllers = <String, TextEditingController>{};
     List<String> people = existingShares.map((row) => row['person_id'] as String).toList();
     if (people.isEmpty) people = ['You'];
-    if (!people.contains('You')) people.insert(0, 'You');
+    
     String payer = expense.paidBy;
     if (!people.contains(payer)) people.insert(0, payer);
     final shareByPerson = <String, int>{
@@ -643,7 +643,7 @@ class _EvenHomeState extends State<EvenHome> {
                       avatar: CircleAvatar(backgroundColor: colors.secondaryContainer,
                         child: Text(person.characters.first.toUpperCase(), style: TextStyle(color: colors.onSecondaryContainer, fontSize: 11))),
                       label: Text(person),
-                      onDeleted: person == 'You' || person == payer || people.length == 1 ? null : () => localSet(() {
+                      onDeleted: person == payer || people.length == 1 ? null : () => localSet(() {
                         people.remove(person);
                         splitControllers.remove(person)?.dispose();
                         if (method == SplitMethod.exact) {
@@ -1272,7 +1272,7 @@ class _EvenHomeState extends State<EvenHome> {
             Wrap(spacing: 8, runSpacing: 8, children: candidates.map((person) => FilterChip(
               selected: selected.contains(person), label: Text(person == 'You' ? 'You' : person),
               avatar: CircleAvatar(radius: 12, child: Text(person.isEmpty ? '?' : person[0].toUpperCase(), style: const TextStyle(fontSize: 10))),
-              onSelected: (value) => setSheet(() { if (value) { selected.add(person); } else if (person != 'You') { selected.remove(person); } }),
+              onSelected: (value) => setSheet(() { if (value) { selected.add(person); } else if (person != 'You' || allowExcludeYou) { selected.remove(person); } }),
             )).toList()),
             const SizedBox(height: 14),
             Row(children: [
@@ -1282,7 +1282,7 @@ class _EvenHomeState extends State<EvenHome> {
             ]),
             const SizedBox(height: 18),
             SizedBox(width: double.infinity, child: FilledButton(
-              onPressed: () => Navigator.pop(ctx, ['You', ...selected.where((e) => e != 'You')]),
+              onPressed: () => Navigator.pop(ctx, allowExcludeYou ? selected.toList() : ['You', ...selected.where((e) => e != 'You')]),
               style: FilledButton.styleFrom(backgroundColor: const Color(0xFF5B4BC4), padding: const EdgeInsets.all(16)),
               child: Text('Done · ${selected.length} selected'),
             )),
@@ -1459,6 +1459,7 @@ class _EvenHomeState extends State<EvenHome> {
     final groupMembers = initialGroupId == null
         ? <String>['You']
         : [..._groups.firstWhere((g) => g.id == initialGroupId).members];
+    var payerChoices = [...groupMembers];
     if (initialGroupId != null) selectedPeople = [...groupMembers];
     SplitMethod splitMethod = SplitMethod.equal;
     List<SplitInput>? preparedInputs;
@@ -1559,7 +1560,7 @@ class _EvenHomeState extends State<EvenHome> {
                               child: Text(initials, style: TextStyle(color: isYou ? colors.onPrimary : colors.onSecondaryContainer, fontSize: 11, fontWeight: FontWeight.w800))),
                             const SizedBox(width: 8),
                             Text(person, style: TextStyle(color: colors.onSurface, fontWeight: FontWeight.w600, fontSize: 13)),
-                            ...[
+                            [
                               const SizedBox(width: 5),
                               InkWell(customBorder: const CircleBorder(),
                                 onTap: () => localSet(() {
@@ -1567,7 +1568,7 @@ class _EvenHomeState extends State<EvenHome> {
                                   if (paidBy == person) paidBy = groupMembers.first;
                                 }),
                                 child: Padding(padding: const EdgeInsets.all(3), child: Icon(Icons.close_rounded, size: 16, color: colors.onSurfaceVariant))),
-                            ],
+                            ].first,
                           ]),
                         );
                       }).toList()),
@@ -1575,10 +1576,10 @@ class _EvenHomeState extends State<EvenHome> {
                       SizedBox(width: double.infinity, child: OutlinedButton.icon(
                         onPressed: () async {
                           final suggestions = _groups.expand((g) => g.members).toSet().toList();
-                          final chosen = await _pickPeople(selectedPeople, suggestions: suggestions);
+                          final chosen = await _pickPeople(selectedPeople, suggestions: suggestions, allowExcludeYou: true);
                           if (chosen != null && chosen.isNotEmpty) localSet(() {
                             selectedPeople = chosen;
-                            if (!selectedPeople.contains(paidBy)) paidBy = selectedPeople.first;
+                            payerChoices = {...payerChoices, ...chosen}.toList();
                           });
                         },
                         icon: const Icon(Icons.person_add_alt_1_rounded), label: const Text('Manage people'),
@@ -1593,9 +1594,9 @@ class _EvenHomeState extends State<EvenHome> {
                 _payerSelector(
                   context: ctx,
                   payer: paidBy,
-                  people: selectedPeople,
+                  people: payerChoices,
                   onTap: () async {
-                    final chosen = await _pickPayer(groupMembers, paidBy);
+                    final chosen = await _pickPayer(payerChoices, paidBy);
                     if (chosen != null) localSet(() => paidBy = chosen);
                   },
                 ),
