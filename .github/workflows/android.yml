@@ -42,9 +42,11 @@ jobs:
           cache: true
 
       - name: Generate Android project
+        shell: bash
         run: |
           flutter create --platforms=android --org com.even --project-name app /tmp/even-platform
-          cp -R /tmp/even-platform/android ./android
+          mkdir -p android
+          cp -R /tmp/even-platform/android/. android/
           sed -i 's/android:label="app"/android:label="Even"/' android/app/src/main/AndroidManifest.xml
           mkdir -p android/app/src/main/res/drawable android/app/src/main/res/mipmap-anydpi-v26 android/app/src/main/res/values
           cp tool/android/ic_launcher_foreground.xml android/app/src/main/res/drawable/ic_launcher_foreground.xml
@@ -52,6 +54,8 @@ jobs:
           cp tool/android/ic_launcher_background.xml android/app/src/main/res/values/ic_launcher_background.xml
           python3 - <<'PY'
           from pathlib import Path
+          import re
+
           path = Path("android/app/src/main/AndroidManifest.xml")
           xml = path.read_text()
           callback = """
@@ -62,11 +66,11 @@ jobs:
                       <data android:scheme="even" android:host="login-callback" />
                   </intent-filter>
           """
-          marker = "            </activity>"
-          if marker not in xml:
-              raise SystemExit("Could not locate Flutter MainActivity in AndroidManifest.xml")
-          xml = xml.replace(marker, callback + "\n" + marker, 1)
-          path.write_text(xml)
+          if "android:host=" + chr(34) + "login-callback" + chr(34) not in xml:
+              updated, count = re.subn(r"</activity>", callback + "\\n            </activity>", xml, count=1)
+              if count != 1:
+                  raise SystemExit("Could not find the Flutter activity closing tag in AndroidManifest.xml")
+              path.write_text(updated)
           PY
 
       - name: Install dependencies
