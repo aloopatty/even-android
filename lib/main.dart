@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'config/even_supabase_config.dart';
 import 'config/even_auth_gate.dart';
 import 'data/even_database.dart';
@@ -79,6 +80,15 @@ class _EvenAppState extends State<EvenApp> {
   Future<void> _setDisplayName(String value) async {
     final clean = value.trim();
     if (clean.isEmpty) return;
+    final client = EvenSupabaseConfig.client;
+    final user = client?.auth.currentUser;
+    if (client != null && user != null) {
+      await client.from('profiles').upsert({
+        'id': user.id,
+        'display_name': clean,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      });
+    }
     setState(() => _displayName = clean);
     await widget.preferences.setString('display_name', clean);
   }
@@ -1784,7 +1794,7 @@ class _AccountPageState extends State<_AccountPage> {
         const SizedBox(height: 18),
         Center(child: Text('Your profile', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800))),
         const SizedBox(height: 6),
-        Center(child: Text('This profile is saved on this device.', style: TextStyle(color: colors.onSurfaceVariant))),
+        Center(child: Text(EvenSupabaseConfig.client?.auth.currentUser == null ? 'Local profile' : 'Your account profile', style: TextStyle(color: colors.onSurfaceVariant))),
         const SizedBox(height: 28),
         Text('Display name', style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
@@ -1801,7 +1811,9 @@ class _AccountPageState extends State<_AccountPage> {
             Icon(Icons.info_outline_rounded, color: colors.onSurfaceVariant),
             const SizedBox(width: 12),
             Expanded(child: Text(
-              'EVEN currently works offline on this device. Sign-in, email verification and cloud account sync are not configured, so this screen edits your local profile only.',
+              EvenSupabaseConfig.client?.auth.currentUser == null
+                  ? 'Your profile is stored on this device until you sign in.'
+                  : 'Your display name is saved to your EVEN account and will be available on your other signed-in devices.',
               style: TextStyle(color: colors.onSurfaceVariant, height: 1.45, fontSize: 13),
             )),
           ]),
