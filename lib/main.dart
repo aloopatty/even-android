@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'config/even_supabase_config.dart';
+import 'config/even_auth_gate.dart';
 import 'data/even_database.dart';
 import 'data/even_repository.dart';
 import 'domain/models.dart';
@@ -228,12 +229,12 @@ class _EvenAppState extends State<EvenApp> {
           child: child ?? const SizedBox.shrink(),
         );
       },
-      home: EvenHome(
+      home: EvenAuthGate(child: EvenHome(
         displayName: _displayName,
         onDisplayNameChanged: _setDisplayName,
         onThemeChanged: _setThemeMode,
         themeMode: _themeMode,
-      ),
+      )),
     );
   }
 }
@@ -279,14 +280,13 @@ class _EvenHomeState extends State<EvenHome> {
   Widget build(BuildContext context) {
     final pages = [
       _dashboard(),
-      _groupsPage(),
       _activityPage(),
       _insightsPage(),
       _settingsPage(),
     ];
     return Scaffold(
       body: SafeArea(child: AnimatedSwitcher(duration: const Duration(milliseconds: 220), child: KeyedSubtree(key: ValueKey(_tab), child: pages[_tab]))),
-      floatingActionButton: (_tab == 0 || _tab == 1) ? FloatingActionButton.extended(
+      floatingActionButton: (_tab == 0) ? FloatingActionButton.extended(
         onPressed: _showPlacePicker, backgroundColor: Theme.of(context).colorScheme.primary, foregroundColor: Theme.of(context).colorScheme.onPrimary,
         icon: const Icon(Icons.add_rounded), label: const Text('Add expense', style: TextStyle(fontWeight: FontWeight.w600)),
       ) : null,
@@ -295,7 +295,6 @@ class _EvenHomeState extends State<EvenHome> {
         onDestinationSelected: (value) => setState(() => _tab = value),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.grid_view_rounded), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.group_work_rounded), label: 'Groups'),
           NavigationDestination(icon: Icon(Icons.receipt_long_rounded), label: 'Transactions'),
           NavigationDestination(icon: Icon(Icons.insights_rounded), label: 'Insights'),
           NavigationDestination(icon: Icon(Icons.tune_rounded), label: 'Settings'),
