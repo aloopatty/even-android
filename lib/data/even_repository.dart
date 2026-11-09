@@ -151,25 +151,6 @@ class EvenRepository {
     });
   }
 
-  /// Positive values are owed to a person; negative values are owed by them.
-  Future<Map<String, int>> netBalances() async {
-    final db = await _database.database;
-    final expenses = await db.query('expenses',
-      columns: ['id', 'amount_minor', 'paid_by', 'deleted_at'],
-      where: 'deleted_at IS NULL');
-    final ids = expenses.map((row) => row['id'] as String).toList();
-    final shares = <Map<String, Object?>>[];
-    if (ids.isNotEmpty) {
-      final marks = List.filled(ids.length, '?').join(',');
-      shares.addAll(await db.rawQuery(
-        'SELECT expense_id, person_id, amount_minor FROM expense_shares WHERE expense_id IN ($marks)', ids));
-    }
-    final settlements = await db.query('settlements',
-      columns: ['from_person', 'to_person', 'amount_minor', 'deleted_at'],
-      where: 'deleted_at IS NULL');
-    return BalanceEngine.calculate(expenses: expenses, shares: shares, settlements: settlements);
-  }
-
   /// Calculates a group's ledger in isolation. A person's display name in
   /// another group is not treated as the same financial identity.
   Future<Map<String, int>> netBalancesForGroup(String groupId) async {
@@ -201,7 +182,7 @@ class EvenRepository {
 
   Future<void> recordSettlement({
     required String fromPerson, required String toPerson,
-    required int amountMinor, String? note, String? groupId,
+    required int amountMinor, required String groupId, String? note,
   }) async {
     final from = fromPerson.trim();
     final to = toPerson.trim();
@@ -209,6 +190,8 @@ class EvenRepository {
       throw ArgumentError('Choose two different people and a positive amount.');
     }
     final db = await _database.database;
+    final group = await db.query('groups', columns: ['id'], where: 'id = ? AND archived = 0', whereArgs: [groupId], limit: 1);
+    if (group.isEmpty) throw StateError('Group not found or archived.');
     await db.transaction((txn) async {
       await txn.insert('settlements', {
         'id': _uuid.v4(), 'from_person': from, 'to_person': to,
