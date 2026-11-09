@@ -83,7 +83,7 @@ class _GoogleProfileSetupPageState extends State<_GoogleProfileSetupPage> {
     _displayName = TextEditingController(text: suggested);
     final normalized = suggested.toLowerCase()
         .replaceAll(RegExp('[^a-z0-9_]+'), '_')
-        .replaceAll(RegExp('^_+|_+$'), '');
+        .replaceAll(RegExp(r'^_+|_+$'), '');
     final suggestion = normalized.length > 20 ? normalized.substring(0, 20) : normalized;
     _username = TextEditingController(text: suggestion.length >= 3 ? suggestion : 'even_user');
   }
@@ -98,7 +98,7 @@ class _GoogleProfileSetupPageState extends State<_GoogleProfileSetupPage> {
   Future<void> _save() async {
     final username = _username.text.trim().toLowerCase();
     final displayName = _displayName.text.trim();
-    if (!RegExp('^[a-z0-9_]{3,20}$').hasMatch(username)) {
+    if (!RegExp(r'^[a-z0-9_]{3,20}$').hasMatch(username)) {
       setState(() => _error = 'Username must be 3–20 characters: lowercase letters, numbers or underscores.');
       return;
     }
