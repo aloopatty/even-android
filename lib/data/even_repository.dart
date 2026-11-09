@@ -34,6 +34,20 @@ class EvenRepository {
     await db.insert('groups', {'id': _uuid.v4(), 'name': name.trim(), 'members': clean.join('|'), 'created_at': DateTime.now().millisecondsSinceEpoch});
   }
 
+  Future<void> updateGroupName(String groupId, String name) async {
+    final clean = name.trim();
+    if (clean.isEmpty) throw ArgumentError('Group name cannot be empty.');
+    final db = await _database.database;
+    final changed = await db.update('groups', {'name': clean}, where: 'id = ? AND archived = 0', whereArgs: [groupId]);
+    if (changed == 0) throw StateError('Group not found.');
+  }
+
+  Future<void> archiveGroup(String groupId) async {
+    final db = await _database.database;
+    final changed = await db.update('groups', {'archived': 1}, where: 'id = ? AND archived = 0', whereArgs: [groupId]);
+    if (changed == 0) throw StateError('Group not found or already deleted.');
+  }
+
   Future<void> updateGroupMembers(String groupId, List<String> members) async {
     final clean = members.map((person) => person.trim()).where((person) => person.isNotEmpty).toSet().toList();
     if (!clean.contains('You')) clean.insert(0, 'You');
@@ -156,8 +170,28 @@ class EvenRepository {
     return BalanceEngine.calculate(expenses: expenses, shares: shares, settlements: settlements);
   }
 
-  Future<List<Transfer>> suggestedTransfers() async =>
-      BalanceEngine.suggestedTransfers(await netBalances());
+  /// Calculates a group's ledger in isolation. A person's display name in
+  /// another group is not treated as the same financial identity.
+  Future<Map<String, int>> netBalancesForGroup(String groupId) async {
+    final db = await _database.database;
+    final expenses = await db.query('expenses',
+      columns: ['id', 'amount_minor', 'paid_by', 'deleted_at'],
+      where: 'group_id = ? AND deleted_at IS NULL', whereArgs: [groupId]);
+    final ids = expenses.map((row) => row['id'] as String).toList();
+    final shares = <Map<String, Object?>>[];
+    if (ids.isNotEmpty) {
+      final marks = List.filled(ids.length, '?').join(',');
+      shares.addAll(await db.rawQuery(
+        'SELECT expense_id, person_id, amount_minor FROM expense_shares WHERE expense_id IN ($marks)', ids));
+    }
+    final settlements = await db.query('settlements',
+      columns: ['from_person', 'to_person', 'amount_minor', 'deleted_at'],
+      where: 'group_id = ? AND deleted_at IS NULL', whereArgs: [groupId]);
+    return BalanceEngine.calculate(expenses: expenses, shares: shares, settlements: settlements);
+  }
+
+  Future<List<Transfer>> suggestedTransfersForGroup(String groupId) async =>
+      BalanceEngine.suggestedTransfers(await netBalancesForGroup(groupId));
 
   Future<List<Map<String, Object?>>> settlementHistory({int limit = 100}) async {
     final db = await _database.database;
@@ -167,7 +201,7 @@ class EvenRepository {
 
   Future<void> recordSettlement({
     required String fromPerson, required String toPerson,
-    required int amountMinor, String? note,
+    required int amountMinor, String? note, String? groupId,
   }) async {
     final from = fromPerson.trim();
     final to = toPerson.trim();
@@ -178,7 +212,7 @@ class EvenRepository {
     await db.transaction((txn) async {
       await txn.insert('settlements', {
         'id': _uuid.v4(), 'from_person': from, 'to_person': to,
-        'amount_minor': amountMinor, 'currency': 'INR', 'note': note?.trim(),
+        'amount_minor': amountMinor, 'currency': 'INR', 'group_id': groupId, 'note': note?.trim(),
         'created_at': DateTime.now().millisecondsSinceEpoch,
       });
       await txn.insert('activity', {
