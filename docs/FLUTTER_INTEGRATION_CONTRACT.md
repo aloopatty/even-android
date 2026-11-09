@@ -5,7 +5,7 @@ Packages: add compatible stable supabase_flutter and app_links versions after ch
 Authentication:
 - Email signup: auth.signUp(email,password,data:{full_name}); require verified email.
 - Email login: auth.signInWithPassword.
-- Google: Supabase OAuth provider Google with redirect even://auth-callback; configure Android/iOS deep links.
+- Google: Supabase OAuth provider Google with redirect even://login-callback; configure Android/iOS deep links.
 - Logout clears cached private data and user-scoped pending state.
 - Account deletion must be a verified server-side workflow.
 
