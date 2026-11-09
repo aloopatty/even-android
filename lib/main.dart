@@ -238,7 +238,7 @@ class _EvenAppState extends State<EvenApp> {
           child: child ?? const SizedBox.shrink(),
         );
       },
-      home: EvenAuthGate(child: EvenHome(
+      home: EvenAuthGate(onProfileCompleted: _setDisplayName, child: EvenHome(
         displayName: _displayName,
         onDisplayNameChanged: _setDisplayName,
         onThemeChanged: _setThemeMode,
