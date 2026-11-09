@@ -83,10 +83,11 @@ class _EvenAppState extends State<EvenApp> {
     final client = EvenSupabaseConfig.client;
     final user = client?.auth.currentUser;
     if (client != null && user != null) {
-      await client.from('profiles').update({
+      final updated = await client.from('profiles').update({
         'display_name': clean,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
-      }).eq('id', user.id).timeout(const Duration(seconds: 15));
+      }).eq('id', user.id).select('id').maybeSingle().timeout(const Duration(seconds: 15));
+      if (updated == null) throw StateError('Your account profile does not exist yet. Please sign out and sign in again.');
     }
     setState(() => _displayName = clean);
     await widget.preferences.setString('display_name', clean);
