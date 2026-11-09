@@ -87,7 +87,7 @@ class _EvenAppState extends State<EvenApp> {
         'id': user.id,
         'display_name': clean,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
-      });
+      }).timeout(const Duration(seconds: 15));
     }
     setState(() => _displayName = clean);
     await widget.preferences.setString('display_name', clean);
@@ -535,7 +535,7 @@ class _EvenHomeState extends State<EvenHome> {
                       )),
                       const SizedBox(width: 9),
                       Expanded(child: FilledButton.tonalIcon(
-                        onPressed: () => _showSettleDebt(person, expense.paidBy, amount),
+                        onPressed: expense.groupId == null ? null : () => _showSettleDebt(person, expense.paidBy, amount, groupId: expense.groupId!),
                         icon: const Icon(Icons.check_circle_outline_rounded, size: 17),
                         label: const Text('Record paid'),
                       )),
@@ -785,12 +785,15 @@ class _EvenHomeState extends State<EvenHome> {
     for (final controller in splitControllers.values) { controller.dispose(); }
   }
 
-  Future<void> _showSettleDebt(String from, String to, int amount) async {
+  Future<void> _showSettleDebt(String from, String to, int amount, {required String groupId}) async {
     final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
       title: const Text('Record settlement'), content: Text('Record that $from paid $to ${_format(amount)}? This only records a payment made outside the app.'),
       actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
         FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Mark settled'))]));
-    if (ok == true) { await _repo.recordSettlement(fromPerson: from, toPerson: to, amountMinor: amount); await _refresh(); }
+    if (ok == true) {
+      await _repo.recordSettlement(fromPerson: from, toPerson: to, amountMinor: amount, groupId: groupId);
+      await _refresh();
+    }
   }
 
   String _greeting() { final hour = DateTime.now().hour; return hour < 12 ? 'Good morning.' : hour < 17 ? 'Good afternoon.' : 'Good evening.'; }
@@ -817,6 +820,47 @@ class _EvenHomeState extends State<EvenHome> {
       ]),
     );
   }
+  Future<void> _manageGroup(EvenGroup group) async {
+    final action = await showModalBottomSheet<String>(
+      context: context, showDragHandle: true, useSafeArea: true,
+      builder: (ctx) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        ListTile(leading: const Icon(Icons.edit_outlined), title: const Text('Edit group name'), onTap: () => Navigator.pop(ctx, 'name')),
+        ListTile(leading: const Icon(Icons.people_outline), title: const Text('Manage members'), onTap: () => Navigator.pop(ctx, 'members')),
+        ListTile(leading: Icon(Icons.delete_outline, color: Theme.of(ctx).colorScheme.error), title: Text('Delete group', style: TextStyle(color: Theme.of(ctx).colorScheme.error)), onTap: () => Navigator.pop(ctx, 'delete')),
+        const SizedBox(height: 8),
+      ])),
+    );
+    if (!mounted || action == null) return;
+    try {
+      if (action == 'name') {
+        final controller = TextEditingController(text: group.name);
+        final name = await showDialog<String>(context: context, builder: (ctx) => AlertDialog(
+          title: const Text('Edit group name'),
+          content: TextField(controller: controller, autofocus: true, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Group name')),
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, controller.text.trim()), child: const Text('Save'))],
+        ));
+        controller.dispose();
+        if (name == null || name.trim().isEmpty) return;
+        await _repo.updateGroupName(group.id, name);
+      } else if (action == 'members') {
+        final members = await _pickPeople(group.members, suggestions: _groups.expand((g) => g.members).toSet().toList());
+        if (members == null) return;
+        await _repo.updateGroupMembers(group.id, members);
+      } else if (action == 'delete') {
+        final confirmed = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+          title: const Text('Delete this group?'),
+          content: Text('“${group.name}” will be removed from your groups. Its recorded expenses will be retained for history.'),
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete group'))],
+        ));
+        if (confirmed != true) return;
+        await _repo.archiveGroup(group.id);
+      }
+      await _refresh();
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not update group: $error')));
+    }
+  }
+
   Widget _groupTile(EvenGroup group) {
     return Material(
       color: Theme.of(context).colorScheme.surface,
@@ -824,6 +868,7 @@ class _EvenHomeState extends State<EvenHome> {
       child: InkWell(
         borderRadius: BorderRadius.circular(19),
         onTap: () => _openGroup(group),
+        onLongPress: () => _manageGroup(group),
         child: Container(
           margin: const EdgeInsets.only(bottom: 9),
           padding: const EdgeInsets.all(15),
@@ -1038,79 +1083,70 @@ class _EvenHomeState extends State<EvenHome> {
     ]);
   }
 
-  Widget _insightsPage() => FutureBuilder<Map<String, int>>(
-    future: _repo.netBalances(),
+  Widget _insightsPage() => FutureBuilder<List<({EvenGroup group, Map<String, int> balances})>>(
+    future: Future.wait(_groups.map((group) async => (
+      group: group,
+      balances: await _repo.netBalancesForGroup(group.id),
+    ))),
     builder: (context, snapshot) {
-      final balances = snapshot.data ?? const <String, int>{};
-      final sorted = balances.entries.toList()
-        ..sort((a, b) => b.value.compareTo(a.value));
-      final transfers = snapshot.hasData ? BalanceEngine.suggestedTransfers(balances) : <Transfer>[];
+      final colors = Theme.of(context).colorScheme;
       return ListView(padding: const EdgeInsets.fromLTRB(22, 18, 22, 100), children: [
         Text('Insights', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
         const SizedBox(height: 6),
-        Text('A clearer picture of spending and shared balances.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-        const SizedBox(height: 22),
-        _insightSummaryCards(),
+        Text('Balances are calculated separately inside each group. People in different groups are never combined by display name.',
+          style: TextStyle(color: colors.onSurfaceVariant)),
         const SizedBox(height: 18),
-        const SizedBox(height: 24),
-        Text('People & balances', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-        const SizedBox(height: 6),
-        Text('Tap a person to see who owes them and the transactions behind it.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
-        const SizedBox(height: 14),
+        _insightSummaryCards(),
+        const SizedBox(height: 22),
         if (snapshot.connectionState == ConnectionState.waiting)
           const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator(strokeWidth: 2)))
         else if (snapshot.hasError)
           _emptyCard(icon: Icons.error_outline, title: 'Could not calculate balances', subtitle: snapshot.error.toString(), action: 'Retry', onTap: () => setState(() {}))
-        else if (balances.isEmpty)
-          _emptyCard(icon: Icons.check_circle_outline, title: 'All settled up', subtitle: 'There are no outstanding balances in your ledger.', action: 'Back to home', onTap: () => setState(() => _tab = 0))
-        else
-          ...sorted.map((entry) => Material(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(18),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(18),
-              onTap: () => _showPersonBreakdown(entry.key, entry.value),
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(16),
-                child: Row(children: [
-                  CircleAvatar(backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                    child: Text(entry.key.isEmpty ? '?' : entry.key.characters.first.toUpperCase(),
-                      style: TextStyle(color: Theme.of(context).colorScheme.onSecondaryContainer, fontWeight: FontWeight.w800))),
-                  const SizedBox(width: 12),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(entry.key, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                    Text(entry.value > 0 ? 'Is owed money' : 'Owes money',
-                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11)),
-                  ])),
-                  Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                    Text(_format(entry.value.abs()), style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15,
-                      color: entry.value > 0 ? const Color(0xFF2E8B65) : const Color(0xFFCF6A70))),
-                    Text('View details', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 11)),
-                  ]),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.chevron_right_rounded),
-                ]),
-              ),
-            ),
-          )),
-        if (transfers.isNotEmpty) ...[
-          const SizedBox(height: 14),
-          const Text('Suggested settlements', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 10),
-          ...transfers.map((transfer) => Container(
-            margin: const EdgeInsets.only(bottom: 9), padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(18)),
+        else if (_groups.isEmpty)
+          _emptyCard(icon: Icons.group_outlined, title: 'No group ledgers yet', subtitle: 'Create a group and add shared expenses to see balances.', action: 'Create group', onTap: _showAddGroup)
+        else ...(snapshot.data ?? const <({EvenGroup group, Map<String, int> balances})>[]).map((entry) {
+          final balances = entry.balances;
+          final transfers = BalanceEngine.suggestedTransfers(balances);
+          final sorted = balances.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+          return Container(
+            margin: const EdgeInsets.only(bottom: 14), padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: colors.outlineVariant.withValues(alpha: .5))),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${transfer.from} pays ${transfer.to}', style: const TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 5),
-              Text(_format(transfer.amountMinor), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-              Align(alignment: Alignment.centerRight, child: TextButton(
-                onPressed: () => _confirmSettlement(transfer), child: const Text('Mark as paid'))),
+              Row(children: [
+                Expanded(child: Text(entry.group.name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
+                Text('${entry.group.members.length} members', style: TextStyle(color: colors.onSurfaceVariant, fontSize: 11)),
+              ]),
+              const SizedBox(height: 10),
+              if (balances.isEmpty)
+                Text('All settled up in this group.', style: TextStyle(color: colors.onSurfaceVariant))
+              else ...sorted.map((balance) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Row(children: [
+                  Expanded(child: Text(balance.key, style: const TextStyle(fontWeight: FontWeight.w600))),
+                  Text(balance.value > 0 ? 'gets back' : 'owes', style: TextStyle(color: colors.onSurfaceVariant, fontSize: 11)),
+                  const SizedBox(width: 8),
+                  Text(_format(balance.value.abs()), style: TextStyle(fontWeight: FontWeight.w800,
+                    color: balance.value > 0 ? const Color(0xFF2E8B65) : const Color(0xFFCF6A70))),
+                ]),
+              )),
+              if (transfers.isNotEmpty) ...[
+                const Divider(height: 22),
+                const Text('Suggested settlements', style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                ...transfers.map((transfer) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(children: [
+                    Expanded(child: Text('${transfer.from} pays ${transfer.to}\n${_format(transfer.amountMinor)}',
+                      style: const TextStyle(fontWeight: FontWeight.w600, height: 1.4))),
+                    FilledButton.tonal(onPressed: () => _confirmSettlement(entry.group.id, transfer),
+                      child: const Text('Record paid')),
+                  ]),
+                )),
+              ],
             ]),
-          )),
-        ],
-        const SizedBox(height: 14),
+          );
+        }),
       ]);
     },
   );
@@ -1219,7 +1255,7 @@ class _EvenHomeState extends State<EvenHome> {
     );
   }
 
-  Future<void> _confirmSettlement(Transfer transfer) async {
+  Future<void> _confirmSettlement(String groupId, Transfer transfer) async {
     final confirmed = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
       title: const Text('Record settlement?'),
       content: Text('Confirm that ${transfer.from} has paid ${transfer.to} ${_format(transfer.amountMinor)} outside EVEN. This records the payment; it does not move money.'),
@@ -1229,7 +1265,7 @@ class _EvenHomeState extends State<EvenHome> {
       ],
     ));
     if (confirmed != true) return;
-    await _repo.recordSettlement(fromPerson: transfer.from, toPerson: transfer.to, amountMinor: transfer.amountMinor);
+    await _repo.recordSettlement(fromPerson: transfer.from, toPerson: transfer.to, amountMinor: transfer.amountMinor, groupId: groupId);
     if (!mounted) return;
     await _refresh();
     setState(() {});
@@ -1774,9 +1810,15 @@ class _AccountPageState extends State<_AccountPage> {
       return;
     }
     setState(() => _saving = true);
-    await widget.onSave(value);
-    if (!mounted) return;
-    Navigator.pop(context);
+    try {
+      await widget.onSave(value);
+      if (!mounted) return;
+      Navigator.pop(context);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save profile: $error')));
+    }
   }
 
   @override
