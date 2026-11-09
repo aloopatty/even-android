@@ -25,9 +25,160 @@ class _EvenAuthGateState extends State<EvenAuthGate> {
       ),
       builder: (context, snapshot) {
         final session = snapshot.data?.session ?? client.auth.currentSession;
-        if (session != null) return widget.child;
-        return const _EvenSignInPage();
+        if (session == null) return const _EvenSignInPage();
+
+        // Google accounts must choose their public EVEN identity before entering
+        // the app. Email OTP accounts retain the existing sign-in flow.
+        final provider = session.user.appMetadata['provider']?.toString();
+        if (provider == 'google') {
+          return FutureBuilder<Map<String, dynamic>?>(
+            future: client.from('profiles').select('username').eq('id', session.user.id).maybeSingle(),
+            builder: (context, profile) {
+              if (profile.connectionState == ConnectionState.waiting) {
+                return const Scaffold(body: Center(child: CircularProgressIndicator()));
+              }
+              if (profile.hasError) {
+                return _ProfileSetupErrorPage(
+                  message: 'We could not load your EVEN profile. Check your connection and try again.',
+                  onRetry: () => setState(() {}),
+                );
+              }
+              final username = profile.data?['username']?.toString().trim() ?? '';
+              if (username.isEmpty) {
+                return _GoogleProfileSetupPage(
+                  user: session.user,
+                  onComplete: () { if (mounted) setState(() {}); },
+                );
+              }
+              return widget.child;
+            },
+          );
+        }
+        return widget.child;
       },
+    );
+  }
+}
+
+class _ProfileSetupErrorPage extends StatelessWidget {
+  const _ProfileSetupErrorPage({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: Center(child: Padding(
+      padding: const EdgeInsets.all(28),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        const Icon(Icons.cloud_off_outlined, size: 42),
+        const SizedBox(height: 16),
+        const Text('Could not load your profile', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 8),
+        Text(message, textAlign: TextAlign.center),
+        const SizedBox(height: 18),
+        FilledButton(onPressed: onRetry, child: const Text('Try again')),
+      ]),
+    )),
+  );
+}
+
+class _GoogleProfileSetupPage extends StatefulWidget {
+  const _GoogleProfileSetupPage({required this.user, required this.onComplete});
+  final User user;
+  final VoidCallback onComplete;
+  @override
+  State<_GoogleProfileSetupPage> createState() => _GoogleProfileSetupPageState();
+}
+
+class _GoogleProfileSetupPageState extends State<_GoogleProfileSetupPage> {
+  late final TextEditingController _username;
+  late final TextEditingController _displayName;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final metadata = widget.user.userMetadata ?? const <String, dynamic>{};
+    final suggested = (metadata['full_name'] ?? metadata['name'] ?? '').toString().trim();
+    _displayName = TextEditingController(text: suggested);
+    _username = TextEditingController(text: suggested.toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]+'), '_').replaceAll(RegExp(r'^_+|_+$'), '').substring(0, suggested.toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]+'), '_').replaceAll(RegExp(r'^_+|_+$'), '').length.clamp(0, 20)));
+  }
+
+  @override
+  void dispose() {
+    _username.dispose();
+    _displayName.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final username = _username.text.trim().toLowerCase();
+    final displayName = _displayName.text.trim();
+    if (!RegExp(r'^[a-z0-9_]{3,20}$').hasMatch(username)) {
+      setState(() => _error = 'Username must be 3–20 characters: lowercase letters, numbers or underscores.');
+      return;
+    }
+    if (displayName.isEmpty || displayName.length > 60) {
+      setState(() => _error = 'Enter a display name of 1–60 characters.');
+      return;
+    }
+    setState(() { _saving = true; _error = null; });
+    try {
+      await Supabase.instance.client.from('profiles').update({
+        'username': username,
+        'display_name': displayName,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', widget.user.id).timeout(const Duration(seconds: 15));
+      widget.onComplete();
+    } on PostgrestException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = error.code == '23505'
+          ? 'That username is already taken. Please choose another.'
+          : 'Could not save your profile: ${error.message}';
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() { _saving = false; _error = 'Could not save your profile. Check your connection and try again.'; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Scaffold(
+      body: SafeArea(child: Center(child: SingleChildScrollView(
+        padding: const EdgeInsets.all(26),
+        child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 420), child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Icon(Icons.all_inclusive_rounded, size: 44, color: colors.primary),
+            const SizedBox(height: 22),
+            Text('Make EVEN yours', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
+            Text('Choose a unique username and the name your friends will see.', style: TextStyle(color: colors.onSurfaceVariant)),
+            const SizedBox(height: 24),
+            TextField(controller: _username, enabled: !_saving, autocorrect: false,
+              textCapitalization: TextCapitalization.none,
+              decoration: const InputDecoration(labelText: 'Unique username', prefixText: '@')),
+            const SizedBox(height: 14),
+            TextField(controller: _displayName, enabled: !_saving, textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(labelText: 'Display name')),
+            const SizedBox(height: 8),
+            Text('Your username is unique. Your display name can be changed and does not need to be unique.',
+              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12)),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(_error!, style: TextStyle(color: colors.error)),
+            ],
+            const SizedBox(height: 22),
+            FilledButton(onPressed: _saving ? null : _save, child: _saving
+              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Text('Continue')),
+          ],
+        )),
+      ))),
     );
   }
 }
