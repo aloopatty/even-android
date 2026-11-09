@@ -11,13 +11,17 @@ class BalanceEngine {
   }) {
     final balances = <String, int>{};
     final activeIds = <String>{};
+    final expectedByExpense = <String, int>{};
+    final shareTotals = <String, int>{};
+    final peopleByExpense = <String, Set<String>>{};
     for (final expense in expenses) {
       if (expense['deleted_at'] != null) continue;
       final id = expense['id'] as String;
       final amount = expense['amount_minor'] as int;
       final payer = (expense['paid_by'] as String).trim();
-      if (amount < 0 || payer.isEmpty) throw ArgumentError('Invalid expense ledger row.');
+      if (amount <= 0 || payer.isEmpty) throw ArgumentError('Invalid expense ledger row.');
       activeIds.add(id);
+      expectedByExpense[id] = amount;
       balances[payer] = (balances[payer] ?? 0) + amount;
     }
     for (final share in shares) {
@@ -25,7 +29,16 @@ class BalanceEngine {
       final person = (share['person_id'] as String).trim();
       final amount = share['amount_minor'] as int;
       if (person.isEmpty || amount < 0) throw ArgumentError('Invalid expense share.');
+      final expenseId = share['expense_id'] as String;
+      final people = peopleByExpense.putIfAbsent(expenseId, () => <String>{});
+      if (!people.add(person)) throw StateError('An expense contains duplicate shares for the same person.');
+      shareTotals[expenseId] = (shareTotals[expenseId] ?? 0) + amount;
       balances[person] = (balances[person] ?? 0) - amount;
+    }
+    for (final entry in expectedByExpense.entries) {
+      if (shareTotals[entry.key] != entry.value) {
+        throw StateError('Expense shares must add up to each individual expense total.');
+      }
     }
     for (final settlement in settlements) {
       if (settlement['deleted_at'] != null) continue;

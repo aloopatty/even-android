@@ -67,6 +67,39 @@ void main() {
       );
     });
 
+    test('rejects mismatched shares per expense even when global totals cancel', () {
+      expect(
+        () => BalanceEngine.calculate(
+          expenses: [
+            {'id': 'e1', 'amount_minor': 1000, 'paid_by': 'A', 'deleted_at': null},
+            {'id': 'e2', 'amount_minor': 1000, 'paid_by': 'B', 'deleted_at': null},
+          ],
+          shares: [
+            {'expense_id': 'e1', 'person_id': 'A', 'amount_minor': 500},
+            {'expense_id': 'e2', 'person_id': 'B', 'amount_minor': 1500},
+          ],
+          settlements: const [],
+        ),
+        throwsStateError,
+      );
+    });
+
+    test('rejects duplicate person shares in one expense', () {
+      expect(
+        () => BalanceEngine.calculate(
+          expenses: [
+            {'id': 'e1', 'amount_minor': 1000, 'paid_by': 'A', 'deleted_at': null},
+          ],
+          shares: [
+            {'expense_id': 'e1', 'person_id': 'B', 'amount_minor': 500},
+            {'expense_id': 'e1', 'person_id': 'B', 'amount_minor': 500},
+          ],
+          settlements: const [],
+        ),
+        throwsStateError,
+      );
+    });
+
     test('simplifies debts to the minimum transfer count', () {
       final result = BalanceEngine.suggestedTransfers({
         'A': 7000,

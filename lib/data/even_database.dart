@@ -11,7 +11,7 @@ class EvenDatabase {
     final root = await getDatabasesPath();
     _db = await openDatabase(
       p.join(root, 'even.db'),
-      version: 3,
+      version: 4,
       onCreate: (db, version) async {
         await db.execute('''CREATE TABLE groups (
           id TEXT PRIMARY KEY, name TEXT NOT NULL, members TEXT NOT NULL,
@@ -30,7 +30,7 @@ class EvenDatabase {
         await db.execute('''CREATE TABLE settlements (
           id TEXT PRIMARY KEY, from_person TEXT NOT NULL, to_person TEXT NOT NULL,
           amount_minor INTEGER NOT NULL, currency TEXT NOT NULL DEFAULT 'INR',
-          note TEXT, created_at INTEGER NOT NULL, deleted_at INTEGER)''');
+          group_id TEXT, note TEXT, created_at INTEGER NOT NULL, deleted_at INTEGER)''');
         await db.execute('''CREATE TABLE recurring_expenses (
           id TEXT PRIMARY KEY, title TEXT NOT NULL, amount_minor INTEGER NOT NULL,
           currency TEXT NOT NULL, frequency TEXT NOT NULL, next_due INTEGER NOT NULL,
@@ -50,6 +50,10 @@ class EvenDatabase {
         }
         if (oldVersion < 3) {
           await db.execute('CREATE INDEX idx_settlements_active ON settlements(deleted_at, created_at DESC)');
+        }
+        if (oldVersion < 4) {
+          await db.execute('ALTER TABLE settlements ADD COLUMN group_id TEXT');
+          await db.execute('CREATE INDEX idx_settlements_group ON settlements(group_id, deleted_at, created_at DESC)');
         }
       },
     );
