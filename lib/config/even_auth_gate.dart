@@ -5,8 +5,9 @@ import 'even_supabase_config.dart';
 /// Authentication gate for EVEN. Email sign-in uses a one-time verification
 /// code; Google uses Supabase OAuth. No service-role key belongs in this app.
 class EvenAuthGate extends StatefulWidget {
-  const EvenAuthGate({super.key, required this.child});
+  const EvenAuthGate({super.key, required this.child, required this.onProfileCompleted});
   final Widget child;
+  final Future<void> Function(String displayName) onProfileCompleted;
 
   @override
   State<EvenAuthGate> createState() => _EvenAuthGateState();
@@ -47,7 +48,10 @@ class _EvenAuthGateState extends State<EvenAuthGate> {
               if (username.isEmpty) {
                 return _GoogleProfileSetupPage(
                   user: session.user,
-                  onComplete: () { if (mounted) setState(() {}); },
+                  onComplete: (displayName) async {
+                    await widget.onProfileCompleted(displayName);
+                    if (mounted) setState(() {});
+                  },
                 );
               }
               return widget.child;
@@ -84,7 +88,7 @@ class _ProfileSetupErrorPage extends StatelessWidget {
 class _GoogleProfileSetupPage extends StatefulWidget {
   const _GoogleProfileSetupPage({required this.user, required this.onComplete});
   final User user;
-  final VoidCallback onComplete;
+  final Future<void> Function(String displayName) onComplete;
   @override
   State<_GoogleProfileSetupPage> createState() => _GoogleProfileSetupPageState();
 }
@@ -131,7 +135,7 @@ class _GoogleProfileSetupPageState extends State<_GoogleProfileSetupPage> {
         'display_name': displayName,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', widget.user.id).timeout(const Duration(seconds: 15));
-      widget.onComplete();
+      await widget.onComplete(displayName);
     } on PostgrestException catch (error) {
       if (!mounted) return;
       setState(() {
