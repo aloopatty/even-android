@@ -83,11 +83,10 @@ class _EvenAppState extends State<EvenApp> {
     final client = EvenSupabaseConfig.client;
     final user = client?.auth.currentUser;
     if (client != null && user != null) {
-      await client.from('profiles').upsert({
-        'id': user.id,
+      await client.from('profiles').update({
         'display_name': clean,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
-      }).timeout(const Duration(seconds: 15));
+      }).eq('id', user.id).timeout(const Duration(seconds: 15));
     }
     setState(() => _displayName = clean);
     await widget.preferences.setString('display_name', clean);
