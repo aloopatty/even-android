@@ -192,7 +192,7 @@ class _EvenSignInPageState extends State<_EvenSignInPage> {
 
   Future<void> _sendCode() async {
     final email = _email.text.trim();
-    if (!RegExp(r'^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$').hasMatch(email)) {
+    if (email.contains(' ') || !email.contains('@') || !email.substring(email.indexOf('@') + 1).contains('.')) {
       setState(() => _error = 'Enter a valid email address.');
       return;
     }
